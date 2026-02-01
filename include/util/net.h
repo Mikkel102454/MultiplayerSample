@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <iostream>
 
 enum NetResult {
     NET_OK = 0,
@@ -23,6 +24,11 @@ struct NetAddress {
 struct NetSocket {
     uintptr_t handle;
 };
+
+void Net_Init();
+void Net_Shutdown();
+
+NetAddress Net_ResolveAddress(const char* hostname, uint16_t port);
 
 NetSocket Socket_Create(NetProtocol protocol, bool nonblocking);
 NetResult Socket_Bind(NetSocket sock, NetAddress addr);

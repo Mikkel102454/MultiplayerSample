@@ -4,8 +4,10 @@ void Client_Connect(Net_Client* client, NetAddress addr) {
     client->server = Socket_Create(NET_TCP, true);
     client->addr = addr;
 
+    client->state = CONNECTING;
     if(Socket_Connect(client->server, addr) == NET_ERROR) {
-        //TraceLog(LOG_FATAL, "Server: Failed connect socket to server");
+        std::cout << "Client: Failed connect socket to server\n";
+        client->state = IDLE;
         return;
     }
 }

@@ -1,19 +1,18 @@
 #include "network/server.h"
-#include <iostream>
 
 void Server_Init(Server* server, NetAddress addr, int max_clients) {
     server->socket = Socket_Create(NET_TCP, true);
     if (Socket_Bind(server->socket, addr) != NET_OK) {
-        //TraceLog(LOG_FATAL, "Server: Failed to bind to socket");
+        std::cout << "Server: Failed to bind to socket\n";
         return;
     }
 
     if (Socket_Listen(server->socket, max_clients * 2) != NET_OK) {
-        //TraceLog(LOG_FATAL, "Server: Failed to listen on socket");
+        std::cout << "Server: Failed to listen on socket\n";
         return;
     }
 
-    server->clients = std::make_unique<Client*[]>(max_clients);
+    server->clients = std::make_unique<Client[]>(max_clients);
 }
 
 void Server_AcceptClients(Server* server) {

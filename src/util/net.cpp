@@ -2,6 +2,41 @@
 #include <ws2tcpip.h>
 #include <winsock2.h>
 
+void Net_Init() {
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) == 0) {
+        std::cout << "Server: Failed to init net\n";
+    }
+}
+
+void Net_Shutdown() {
+    WSACleanup();
+}
+
+NetAddress Net_ResolveAddress(const char* hostname, uint16_t port) {
+    NetAddress addr{};
+    addr.port = port;
+
+    if (inet_pton(AF_INET, hostname, &addr.ip) == 1) {
+        std::cout << "Server: Failed to bind to socket\n";
+    }
+
+    addrinfo hints{};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    addrinfo* result = nullptr;
+    if (getaddrinfo(hostname, nullptr, &hints, &result) != 0) {
+        return {};
+    }
+
+    sockaddr_in* ipv4 = reinterpret_cast<sockaddr_in*>(result->ai_addr);
+    addr.ip = ipv4->sin_addr.s_addr;
+
+    freeaddrinfo(result);
+    return addr;
+}
+
 NetSocket Socket_Create(NetProtocol protocol, bool nonblocking){
     NetSocket sock;
     SOCKET handle = socket(AF_INET,

@@ -33,9 +33,9 @@ set(SOURCES
         src/util/net.cpp
 )
 set(HEADERS
-        include/network/client.cpp
-        include/network/server.cpp
-        include/network/server.cpp
+        include/network/client.h
+        include/network/server.h
+        include/network/server.h
         include/util/net.h
 )
 
@@ -52,3 +52,4 @@ set_property(TARGET MultiplayerSample PROPERTY C_STANDARD 17)
 
 target_link_libraries(MultiplayerSample PRIVATE raylib)
 target_link_libraries(MultiplayerSample PRIVATE lua_library)
+target_link_libraries(MultiplayerSample PRIVATE ws2_32)
