@@ -37,6 +37,8 @@ void Server_Run(Server* server);
 
 void Server_AcceptClients(Server* server);
 void Server_RemoveClient(Server* server, int id, DisconnectReason reason);
+void Server_Sleep(Server* server, double tickStartTimeMs);
+void Server_ProcessClients(Server* server);
 
 void Server_Destroy(Server* server);
 

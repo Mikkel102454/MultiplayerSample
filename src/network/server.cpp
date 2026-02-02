@@ -160,8 +160,31 @@ void Server_ProcessClients(Server* server) {
  * @param server
  * @return the number of tick that was skipped because of stress
  */
-void Server_Sleep(Server* server, double time) {
-    //TODO SLEEP FOR 50 ms (20 TPS)
+void Server_Sleep(Server* server, double tickStartTimeMs) {
+    constexpr double TICK_MS = 33.333;
+
+    double nowMs =
+        std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count();
+
+    double elapsed = nowMs - tickStartTimeMs;
+
+    if (elapsed < TICK_MS) {
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(
+                static_cast<long long>(TICK_MS - elapsed)
+            )
+        );
+        return;
+    }
+
+    // Tick overran → calculate skipped ticks
+    int skippedTicks = static_cast<int>(elapsed / TICK_MS) - 1;
+    if (skippedTicks < 0) skippedTicks = 0;
+    else TraceLog(LOG_WARNING, "Server is running behind! Skipped %d ticks", skippedTicks);
+
+    server->tick++;
 }
 
 /**
@@ -172,13 +195,21 @@ void Server_Sleep(Server* server, double time) {
  */
 void Server_Run(Server* server) {
     while (true) {
+        auto tickStart = std::chrono::steady_clock::now();
+
         // for client shit (important)
         Server_AcceptClients(server);
         Server_ProcessClients(server);
 
         // Tick logic goes here
-        //std::cout << "Server: Tick\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+
+        double tickStartMs = std::chrono::duration<double, std::milli>(
+                tickStart.time_since_epoch()
+            ).count();
+
+        Server_Sleep(server, tickStartMs);
     }
 }
 
