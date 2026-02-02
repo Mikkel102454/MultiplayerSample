@@ -1,11 +1,15 @@
+#include <cstring>
+#include <thread>
+
 #include "raylib.h"
 #include "network/client.h"
+#include "network/packets.h"
 #include "network/server.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
-int main(void)
+int main()
 {
     // Initialization
     //--------------------------------------------------------------------------------------
@@ -19,28 +23,32 @@ int main(void)
 
     Net_Init();
 
-    Server server{};
-    NetAddress addressServer = Net_ResolveAddress("127.0.0.1", 59332);
+    Server* server = new Server();
+    const NetAddress addressServer = Net_ResolveAddress("0.0.0.0", 59332);
 
-    Server_Init(&server, addressServer, 4);
+    Server_Init(server, addressServer, 4);
 
-    Net_Client client;
+    std::thread(Server_Run, server).detach();
 
-    NetAddress addressClient = Net_ResolveAddress("127.0.0.1", 59332);
+    Net_Client client{};
 
+    const NetAddress addressClient = Net_ResolveAddress("127.0.0.1", 59332);
+
+    Client_Init(&client);
     Client_Connect(&client, addressClient);
 
+    Packet_SendConnect(client.server, "test");
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
+        Client_Update(&client);
         BeginDrawing();
 
         ClearBackground(GRAY);
 
         if(client.state == IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
         else if(client.state == CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
-        else if(client.state == ACCEPTING) DrawText("Awating server to accept...", 10, 50, 20, GREEN);
         else if(client.state == READY) DrawText("Ready to play", 10, 50, 20, GREEN);
 
         EndDrawing();
@@ -48,6 +56,7 @@ int main(void)
     }
 
     Net_Shutdown();
+    Server_Destroy(server);
     // De-Initialization
     //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context

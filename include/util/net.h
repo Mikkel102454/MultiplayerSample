@@ -1,9 +1,7 @@
 #ifndef NET_H
 #define NET_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <iostream>
+#include <cstdint>
 
 enum NetResult {
     NET_OK = 0,
@@ -34,6 +32,9 @@ NetSocket Socket_Create(NetProtocol protocol, bool nonblocking);
 NetResult Socket_Bind(NetSocket sock, NetAddress addr);
 NetResult Socket_Connect(NetSocket sock, NetAddress addr);
 NetResult Socket_Listen(NetSocket sock, int backlog);
+NetResult Socket_Close(NetSocket sock);
 NetResult Socket_Accept(NetSocket sock, NetSocket* out_socket, NetAddress* out_addr);
-
+NetResult Socket_Read(NetSocket sock, void* buffer, int length);
+NetResult Socket_Send(NetSocket sock, const void* data, int length);
+NetResult Socket_Poll(NetSocket* sockets, int count, int timeout_ms, bool* readable, bool* writable);
 #endif //NET_H

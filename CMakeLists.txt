@@ -34,9 +34,9 @@ set(SOURCES
 )
 set(HEADERS
         include/network/client.h
-        include/network/server.h
-        include/network/server.h
+        include/network/packets.h
         include/util/net.h
+        include/network/server.h
 )
 
 set(CMAKE_CXX_STANDARD 20)
