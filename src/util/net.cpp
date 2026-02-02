@@ -175,7 +175,10 @@ NetResult Socket_Accept(NetSocket sock, NetSocket* out_socket, NetAddress* out_a
  * @return the NetResult
  */
 NetResult Socket_Read(NetSocket sock, void* buffer, int length){
-    if(recv(sock.handle, static_cast<char*>(buffer), length, 0) == SOCKET_ERROR) {
+    int res = recv(sock.handle, static_cast<char*>(buffer), length, 0);
+
+    if (res == 0) return NET_DISCONNECTED;
+    if(res == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err == WSAEWOULDBLOCK) return NET_WOULDBLOCK;
         return NET_ERROR;

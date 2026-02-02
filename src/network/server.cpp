@@ -19,12 +19,14 @@ void Server_Init(Server* server, NetAddress addr, int max_clients) {
     server->socket = Socket_Create(NET_TCP, true);
     server->max_clients = max_clients;
     if (Socket_Bind(server->socket, addr) != NET_OK) {
-        std::cout << "Server: Failed to bind to socket\n";
+        TraceLog(LOG_FATAL, "Server: Failed to bind to socket");
+
         return;
     }
 
     if (Socket_Listen(server->socket, max_clients * 2) != NET_OK) {
-        std::cout << "Server: Failed to listen on socket\n";
+        TraceLog(LOG_FATAL, "Server: Failed to listen on socket");
+
         return;
     }
 
@@ -42,14 +44,13 @@ void Client_ProcessPackage(Server* server, Client* client) {
     while (true) {
         PacketType packetType;
 
-        int readCode = Packet_GetNextType(client->sock, &packetType);
+        NetResult res = Packet_GetNextType(client->sock, &packetType);
 
-        if (readCode == NET_DISCONNECTED) {
-            std::cout << "Server: Client disconnected\n";
+        if (res == NET_DISCONNECTED) {
             Server_RemoveClient(server, client->id, DIS_LEFT);
             break;
         }
-        if (readCode != NET_OK) {
+        if (res != NET_OK) {
             break;
         }
         switch (packetType) {
@@ -57,14 +58,22 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 return;
             case PCK_DISCONNECT: {
                 DisconnectedPacket packet;
-                Packet_RecvDisconnect(client->sock, &packet);
+                res = Packet_RecvDisconnect(client->sock, &packet);
+                if (res == NET_DISCONNECTED) {
+                    Server_RemoveClient(server, client->id, DIS_LEFT);
+                    break;
+                }
 
                 Server_RemoveClient(server, client->id, DIS_LEFT);
                 TraceLog(LOG_INFO, "Server: Client left the game: %d", packet.reason);
             }
             case PCK_CONNECT: {
                 ConnectPacket packet;
-                Packet_RecvConnect(client->sock, &packet);
+                res = Packet_RecvConnect(client->sock, &packet);
+                if (res == NET_DISCONNECTED) {
+                    Server_RemoveClient(server, client->id, DIS_LEFT);
+                    break;
+                }
 
                 TraceLog(LOG_INFO, "Server: New client named: %s", packet.name);
 
@@ -72,11 +81,16 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 client->connected = true;
                 client->accepted = true;
                 Packet_SendAccepted(client->sock);
+
                 break;
             }
             case PCK_MESSAGE: {
                 MessagePacket packet;
-                Packet_RecvMessage(client->sock, &packet);
+                res = Packet_RecvMessage(client->sock, &packet);
+                if (res == NET_DISCONNECTED) {
+                    Server_RemoveClient(server, client->id, DIS_LEFT);
+                    break;
+                }
 
                 std::cout << "Server: Message from client: " << packet.message << std::endl;
                 break;
@@ -122,6 +136,8 @@ void Server_AcceptClients(Server* server) {
  * @param id
  */
 void Server_RemoveClient(Server* server, int id, DisconnectReason reason) {
+    TraceLog(LOG_INFO, "Server: Removing client: %d", id);
+
     Packet_SendDisconnect(server->clients[id].sock, reason);
 
     Socket_Close(server->clients[id].sock);
@@ -155,7 +171,7 @@ void Server_ProcessClients(Server* server) {
 
 /**
  *
- * Sleep for the reaming time of this tick
+ * Sleep for the reaming time of this tick and warns if tick have been skipped
  *
  * @param server
  * @return the number of tick that was skipped because of stress
@@ -213,6 +229,16 @@ void Server_Run(Server* server) {
     }
 }
 
+/**
+ *
+ * Closes the server
+ *
+ * @param server
+ */
 void Server_Destroy(Server* server) {
+    for (int i = 0; i < server->max_clients; i++) {
+        if (!server->clients[i].accepted) continue;
+        Server_RemoveClient(server, i, DIS_CLOSE);
+    }
     delete server;
 }

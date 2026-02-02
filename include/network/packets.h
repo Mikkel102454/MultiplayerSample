@@ -15,6 +15,7 @@ enum DisconnectReason : uint8_t {
     DIS_LEFT = 0,
     DIS_KICK = 1,
     DIS_TIMEOUT = 2,
+    DIS_CLOSE = 3
 };
 
 struct ConnectPacket {

@@ -18,8 +18,8 @@ struct Net_Client {
     Net_State state{};
 };
 
-void Client_Init(Net_Client* client);
-void Client_Connect(Net_Client* client, NetAddress addr);
+void Client_Init(Net_Client* client, NetAddress addr);
+void Client_Connect(Net_Client* client);
 void Client_Disconnect(Net_Client* client);
 void Client_Destroy(Net_Client* client);
 

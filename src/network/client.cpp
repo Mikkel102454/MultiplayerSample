@@ -2,7 +2,9 @@
 
 #include <iostream>
 
+#include "raylib.h"
 #include "network/packets.h"
+#include "network/server.h"
 
 /**
  *
@@ -11,18 +13,16 @@
  * @param client
  * @param addr
  */
-void Client_Init(Net_Client* client) {
+void Client_Init(Net_Client* client, NetAddress addr) {
     client->state = IDLE;
-}
-void Client_Connect(Net_Client* client, NetAddress addr) {
-    client->server = Socket_Create(NET_TCP, true);
     client->addr = addr;
-
+    client->server = Socket_Create(NET_TCP, true);
+}
+void Client_Connect(Net_Client* client) {
     client->state = CONNECTING;
-    if(Socket_Connect(client->server, addr) == NET_ERROR) {
-        std::cout << "Client: Failed connect socket to server\n";
+    if(Socket_Connect(client->server, client->addr) == NET_ERROR) {
+        TraceLog(LOG_WARNING, "Client: Failed to connect socket to server");
         client->state = IDLE;
-        return;
     }
 }
 
@@ -34,7 +34,8 @@ void Client_Update (Net_Client* client){
     NetResult res = Socket_Poll(&client->server, 1, 0, &client->readable, &client->writeable);
 
     if (res != NET_OK) {
-        std::cout << "Client: Failed to poll data from server.\n";
+        TraceLog(LOG_WARNING, "Client: Failed to poll data from server");
+
         return;
     }
 
@@ -42,12 +43,14 @@ void Client_Update (Net_Client* client){
         while (true) {
             PacketType packetType;
 
-            int readCode = Packet_GetNextType(client->server, &packetType);
+            res = Packet_GetNextType(client->server, &packetType);
 
-            if (readCode != NET_OK) {
-                if (readCode != NET_ERROR) return;
+            if (res == NET_DISCONNECTED) {
                 Client_Disconnect(client);
-                std::cout << "Client: Failed to send data to server. Leaving...\n";
+                break;
+            }
+
+            if (res != NET_OK) {
                 break;
             }
             switch (packetType) {
@@ -55,14 +58,29 @@ void Client_Update (Net_Client* client){
                     return;
                 case PCK_ACCEPTED: {
                     AcceptedPacket packet;
-                    Packet_RecvAccepted(client->server, &packet);
+                    res = Packet_RecvAccepted(client->server, &packet);
+                    if (res == NET_DISCONNECTED) {
+                        Client_Disconnect(client);
+                        break;
+                    }
 
                     client->state = READY;
-                    std::cout << "Connected to server" << std::endl;
+                    TraceLog(LOG_INFO, "Client: Connected to server");
+                    break;
+                }
+                case PCK_DISCONNECT: {
+                    DisconnectedPacket packet;
+                    res = Packet_RecvDisconnect(client->server, &packet);
+                    if (res == NET_DISCONNECTED) {
+                        Client_Disconnect(client);
+                        break;
+                    }
+
+                    Client_Disconnect(client);
                     break;
                 }
                 default:
-                    std::cout << "Unknown package" << std::endl;
+                    TraceLog(LOG_WARNING, "Client: Unknown package type: %d", packetType);
                     return;
             }
         }
@@ -70,6 +88,7 @@ void Client_Update (Net_Client* client){
 }
 
 void Client_Disconnect(Net_Client* client) {
+    TraceLog(LOG_INFO, "Client: Lost connection to the server");
     Packet_SendDisconnect(client->server, DIS_LEFT);
     client->state = IDLE;
 }

@@ -34,8 +34,8 @@ int main()
 
     const NetAddress addressClient = Net_ResolveAddress("127.0.0.1", 59332);
 
-    Client_Init(&client);
-    Client_Connect(&client, addressClient);
+    Client_Init(&client, addressClient);
+    Client_Connect(&client);
 
     Packet_SendConnect(client.server, "test");
 
@@ -55,8 +55,8 @@ int main()
         //----------------------------------------------------------------------------------
     }
 
-    Net_Shutdown();
     Server_Destroy(server);
+    Net_Shutdown();
     // De-Initialization
     //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context
