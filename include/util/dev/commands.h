@@ -89,5 +89,21 @@ public:
     void execute(std::string_view command) override;
 };
 
+class ConsoleCommandList : public ConsoleCommand {
+public:
+    std::span<const std::string_view> getArgs() override {
+        static constexpr std::string_view args[] = {
+            "list"
+        };
+        return args;
+    }
+
+    std::string_view getDescription() override {
+        return std::string_view {"List player that are connected to the server"};
+    }
+
+    void execute(std::string_view command) override;
+};
+
 
 #endif //MULTIPLAYERSAMPLE_COMMANDS_H

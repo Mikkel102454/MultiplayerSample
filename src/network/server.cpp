@@ -71,7 +71,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
             case PCK_DISCONNECT: {
                 DisconnectedPacket packet;
                 res = Packet_RecvDisconnect(client->sock, &packet);
-                Console_Log(INFO, "Server: Client left the game: %s", packet.reason);
+                Console_Log(INFO, "Server: Client left the game: %d", packet.reason);
                 Server_RemoveClient(server, client->id, DIS_LEFT);
                 break;
             }
@@ -101,6 +101,22 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 }
 
                 Console_Log(INFO, "Server: Message from client: %s", packet.message);
+                break;
+            }
+            case PCK_PLAYERLIST_REQUEST: {
+                PlayerListRequestPacket packet;
+                res = Packet_RecvPlayerListRequest(client->sock, &packet);
+                if (res == NET_DISCONNECTED) {
+                    Server_RemoveClient(server, client->id, DIS_LEFT);
+                    break;
+                }
+
+                Packet_SendPlayerListHeader(client->sock, server->client_count);
+
+                for (int i = 0; i < server->max_clients; i++) {
+                    if(!server->clients[i].accepted) continue;
+                    Packet_SendPlayerList(client->sock, i, server->clients[i].name);
+                }
                 break;
             }
             default:

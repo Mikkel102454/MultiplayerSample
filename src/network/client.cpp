@@ -93,6 +93,28 @@ void Client_Update (Net_Client* client){
                     Client_Disconnect(client);
                     break;
                 }
+                case PCK_PLAYERLIST_HEADER: {
+                    PlayerListHeaderPacket packet;
+                    res = Packet_RecvPlayerListHeader(client->server, &packet);
+                    if (res == NET_DISCONNECTED) {
+                        Client_Disconnect(client);
+                        break;
+                    }
+
+                    Console_Log(SUCCESS, "Client: There is %d players in this game", packet.playerCount);
+                    break;
+                }
+                case PCK_PLAYERLIST: {
+                    PlayerListPacket packet;
+                    res = Packet_RecvPlayerList(client->server, &packet);
+                    if (res == NET_DISCONNECTED) {
+                        Client_Disconnect(client);
+                        break;
+                    }
+
+                    Console_Log(SUCCESS, "Client: Client discovered with the name %s and id %d", packet.name, packet.id);
+                    break;
+                }
                 default:
                     Console_Log(WARNING, "Client: Unknown package type: %d", packetType);
                     return;

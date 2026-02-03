@@ -26,6 +26,9 @@ void Console_RegisterCommands(Console* console) {
     console->commands.push_back(std::make_unique<ConsoleCommandQuitServer>());
     console->command_count++;
 
+    console->commands.push_back(std::make_unique<ConsoleCommandList>());
+    console->command_count++;
+
 }
 
 void Console_Init(Console* console) {

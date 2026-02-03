@@ -123,3 +123,19 @@ void ConsoleCommandHelp::execute(std::string_view command) {
         Console_Log(INFO, "");
     }
 }
+
+void ConsoleCommandList::execute(std::string_view command) {
+    std::vector<std::string_view> args = extractArgs(command);
+
+    if (args.size() != 1) {
+        Console_Log(FATAL, "Unsupported command arguments. Please use 'list'");
+        return;
+    }
+
+    if (!Client_Has()) {
+        Console_Log(WARNING, "You are not in a server. Please join a server before you can see active players");
+        return;
+    }
+
+    Packet_SendPlayerListRequest(Client_Get()->server);
+}
