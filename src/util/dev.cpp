@@ -11,6 +11,9 @@ Font consoleFont;
 
 
 void Console_RegisterCommands(Console* console) {
+    console->commands.push_back(std::make_unique<ConsoleCommandHelp>());
+    console->command_count++;
+
     console->commands.push_back(std::make_unique<ConsoleCommandStartServer>());
     console->command_count++;
 
@@ -28,7 +31,7 @@ void Console_RegisterCommands(Console* console) {
 void Console_Init(Console* console) {
     Console_RegisterCommands(console);
     consoleRef = console;
-    consoleFont = LoadFontEx("resources/fonts/SourceCodePro-Regular.ttf", 14, nullptr, 0);
+    consoleFont = LoadFontEx(ASSETS_PATH "pixel_game/fonts/VictorMono-Medium.ttf", 14, nullptr, 0);
 }
 
 Console* Console_Get() {
@@ -46,16 +49,21 @@ bool Console_IsOpen(Console* console) {
 void Console_Draw(Console* console)
 {
     const int padding = 8;
-    const int fontSize = 12;
+    const int fontSize = 14;
     const int lineHeight = fontSize + 2;
     const int height = 300;
 
-    // Background
     DrawRectangle(0, 0, GetScreenWidth(), height, (Color){ 0, 0, 0, 220 });
+    const int inputBarHeight = lineHeight + padding * 2;
 
-    int maxVisibleLines = (height - padding * 2) / lineHeight;
+    DrawRectangle(0, height - inputBarHeight, GetScreenWidth(), inputBarHeight, (Color){ 35, 35, 35, 240 });
 
-    // Clamp scroll offset
+    DrawLine(0, height - inputBarHeight, GetScreenWidth(), height - inputBarHeight, (Color){ 60, 60, 60, 255 });
+
+    const int logAreaHeight = height - inputBarHeight;
+    int maxVisibleLines = (logAreaHeight - padding * 2) / lineHeight;
+
+    // clamp scroll offset
     if (console->scroll_offset < 0)
         console->scroll_offset = 0;
 
@@ -72,7 +80,7 @@ void Console_Draw(Console* console)
 
     int start = console->log_count - 1 - console->scroll_offset;
 
-    // -------- Draw log lines (bottom-up) --------
+    // draw logs
     for (int i = 0; i < maxVisibleLines; i++)
     {
         int logIndex = start - i;
@@ -85,30 +93,30 @@ void Console_Draw(Console* console)
             case FATAL:   color = RED;    break;
             case WARNING: color = YELLOW; break;
             case INFO:    color = RAYWHITE; break;
-            case SUCCESS: color = GREEN; break;
+            case SUCCESS: color = GREEN;  break;
         }
 
         DrawTextEx(
             consoleFont,
             console->log[logIndex]->text.c_str(),
             {
-                static_cast<float>(padding),
-                static_cast<float>(height - padding - lineHeight * (i + 2))
+                (float)padding,
+                (float)(logAreaHeight - padding - lineHeight * (i + 1))
             },
-            static_cast<float>(fontSize),
+            (float)fontSize,
             1.0f,
             color
         );
     }
 
-    // -------- Draw input prompt --------
-    const float inputY = static_cast<float>(height - padding - lineHeight);
+    // input draw thing
+    const float inputY = (float)(height - padding - lineHeight);
 
     DrawTextEx(
         consoleFont,
         ">",
-        { static_cast<float>(padding), inputY },
-        static_cast<float>(fontSize),
+        { (float)padding, inputY },
+        (float)fontSize,
         1.0f,
         RAYWHITE
     );
@@ -116,12 +124,13 @@ void Console_Draw(Console* console)
     DrawTextEx(
         consoleFont,
         console->input,
-        { static_cast<float>(padding + 10), inputY },
-        static_cast<float>(fontSize),
+        { (float)(padding + 10), inputY },
+        (float)fontSize,
         1.0f,
         RAYWHITE
     );
 }
+
 
 void Console_Log(LogLevel level, const char* format, ...)
 {

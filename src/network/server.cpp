@@ -71,13 +71,9 @@ void Client_ProcessPackage(Server* server, Client* client) {
             case PCK_DISCONNECT: {
                 DisconnectedPacket packet;
                 res = Packet_RecvDisconnect(client->sock, &packet);
-                if (res == NET_DISCONNECTED) {
-                    Server_RemoveClient(server, client->id, DIS_LEFT);
-                    break;
-                }
-
+                Console_Log(INFO, "Server: Client left the game: %s", packet.reason);
                 Server_RemoveClient(server, client->id, DIS_LEFT);
-                Console_Log(INFO, "Server: Client left the game: %d", packet.reason);
+                break;
             }
             case PCK_CONNECT: {
                 ConnectPacket packet;

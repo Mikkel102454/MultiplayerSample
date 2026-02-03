@@ -43,6 +43,7 @@ class ConsoleCommand {
 public:
     virtual ~ConsoleCommand() = default;
     virtual std::span<const std::string_view> getArgs() = 0;
+    virtual std::string_view getDescription() = 0;
     virtual void execute(std::string_view command) = 0;
 
 protected:

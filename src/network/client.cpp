@@ -39,8 +39,6 @@ void Client_Connect(Net_Client* client) {
         client->state = IDLE;
         return;
     }
-    Console_Log(SUCCESS, TextFormat("Successfully joined server"));
-
 }
 
 void Client_Update (Net_Client* client){
