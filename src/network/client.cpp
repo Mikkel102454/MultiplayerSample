@@ -4,8 +4,21 @@
 
 #include "raylib.h"
 #include "network/packets.h"
-#include "network/server.h"
+#include "util/dev.h"
 
+Net_Client* net_clientRef;
+
+Net_Client* Client_Get() {
+    return net_clientRef;
+}
+
+void Client_Set(Net_Client* client) {
+    net_clientRef = client;
+}
+
+bool Client_Has() {
+    return net_clientRef != nullptr;
+}
 /**
  *
  * Connect client to a server with given address
@@ -21,9 +34,13 @@ void Client_Init(Net_Client* client, NetAddress addr) {
 void Client_Connect(Net_Client* client) {
     client->state = CONNECTING;
     if(Socket_Connect(client->server, client->addr) == NET_ERROR) {
-        TraceLog(LOG_WARNING, "Client: Failed to connect socket to server");
+        Console_Log(WARNING, "Client: Failed to connect socket to server");
+
         client->state = IDLE;
+        return;
     }
+    Console_Log(SUCCESS, TextFormat("Successfully joined server"));
+
 }
 
 void Client_Update (Net_Client* client){
@@ -34,8 +51,7 @@ void Client_Update (Net_Client* client){
     NetResult res = Socket_Poll(&client->server, 1, 0, &client->readable, &client->writeable);
 
     if (res != NET_OK) {
-        TraceLog(LOG_WARNING, "Client: Failed to poll data from server");
-
+        Console_Log(WARNING, "Client: Failed to poll data from server");
         return;
     }
 
@@ -65,7 +81,7 @@ void Client_Update (Net_Client* client){
                     }
 
                     client->state = READY;
-                    TraceLog(LOG_INFO, "Client: Connected to server");
+                    Console_Log(SUCCESS, "Client: Connected to server");
                     break;
                 }
                 case PCK_DISCONNECT: {
@@ -80,7 +96,7 @@ void Client_Update (Net_Client* client){
                     break;
                 }
                 default:
-                    TraceLog(LOG_WARNING, "Client: Unknown package type: %d", packetType);
+                    Console_Log(WARNING, "Client: Unknown package type: %d", packetType);
                     return;
             }
         }
@@ -88,7 +104,16 @@ void Client_Update (Net_Client* client){
 }
 
 void Client_Disconnect(Net_Client* client) {
-    TraceLog(LOG_INFO, "Client: Lost connection to the server");
+    Console_Log(WARNING, "Client: Lost connection to the server");
+
     Packet_SendDisconnect(client->server, DIS_LEFT);
+    Socket_Close(client->server);
+
     client->state = IDLE;
+    net_clientRef = nullptr;
+}
+
+void Client_Destroy(Net_Client* client) {
+    Client_Disconnect(client);
+    delete client;
 }

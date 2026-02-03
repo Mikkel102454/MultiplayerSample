@@ -37,6 +37,14 @@ set(HEADERS
         include/network/packets.h
         include/util/net.h
         include/network/server.h
+        src/util/draw.cpp
+        include/util/draw.h
+        src/util/dev.cpp
+        include/util/dev.h
+        src/util/numbers.cpp
+        include/util/numbers.h
+        src/util/dev/commands.cpp
+        include/util/dev/commands.h
 )
 
 set(CMAKE_CXX_STANDARD 20)

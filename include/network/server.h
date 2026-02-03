@@ -30,6 +30,9 @@ struct Server {
 
     NetSocket socket;
 };
+Server* Server_Get();
+void Server_Set(Server* server);
+bool Server_Has();
 
 void Server_Init(Server* server, NetAddress addr, int max_clients);
 void Server_ProcessPackages(Server* server);

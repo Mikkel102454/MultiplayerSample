@@ -6,6 +6,20 @@
 
 #include "raylib.h"
 #include "network/packets.h"
+#include "util/dev.h"
+
+Server* serverRef;
+
+Server* Server_Get() {
+    return serverRef;
+}
+void Server_Set(Server* server) {
+    serverRef = server;
+}
+bool Server_Has() {
+    return serverRef != nullptr;
+}
+
 
 /**
  *
@@ -19,14 +33,12 @@ void Server_Init(Server* server, NetAddress addr, int max_clients) {
     server->socket = Socket_Create(NET_TCP, true);
     server->max_clients = max_clients;
     if (Socket_Bind(server->socket, addr) != NET_OK) {
-        TraceLog(LOG_FATAL, "Server: Failed to bind to socket");
-
+        Console_Log(FATAL, "Server: Failed to bind to socket");
         return;
     }
 
     if (Socket_Listen(server->socket, max_clients * 2) != NET_OK) {
-        TraceLog(LOG_FATAL, "Server: Failed to listen on socket");
-
+        Console_Log(FATAL, "Server: Failed to listen on socket");
         return;
     }
 
@@ -65,7 +77,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 }
 
                 Server_RemoveClient(server, client->id, DIS_LEFT);
-                TraceLog(LOG_INFO, "Server: Client left the game: %d", packet.reason);
+                Console_Log(INFO, "Server: Client left the game: %d", packet.reason);
             }
             case PCK_CONNECT: {
                 ConnectPacket packet;
@@ -75,7 +87,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
                     break;
                 }
 
-                TraceLog(LOG_INFO, "Server: New client named: %s", packet.name);
+                Console_Log(INFO, "Server: New client named: %s", packet.name);
 
                 std::memcpy(client->name, &packet.name[0], 25);
                 client->connected = true;
@@ -92,11 +104,11 @@ void Client_ProcessPackage(Server* server, Client* client) {
                     break;
                 }
 
-                std::cout << "Server: Message from client: " << packet.message << std::endl;
+                Console_Log(INFO, "Server: Message from client: %s", packet.message);
                 break;
             }
             default:
-                TraceLog(LOG_WARNING, "Server: Unknown package type: %d", packetType);
+                Console_Log(WARNING, "Server: Unknown package type: %d", packetType);
                 return;
         }
     }
@@ -136,7 +148,8 @@ void Server_AcceptClients(Server* server) {
  * @param id
  */
 void Server_RemoveClient(Server* server, int id, DisconnectReason reason) {
-    TraceLog(LOG_INFO, "Server: Removing client: %d", id);
+    Console_Log(INFO, "Server: Removing client %d", id);
+
 
     Packet_SendDisconnect(server->clients[id].sock, reason);
 
@@ -157,7 +170,7 @@ void Server_ProcessClients(Server* server) {
     for (int i = 0; i < server->max_clients; i++) {
         if (!server->clients[i].connected) continue;
         if (Socket_Poll(&server->clients[i].sock, 1, 0, &server->clients[i].readable, &server->clients[i].writable) != NET_OK) {
-            TraceLog(LOG_FATAL, "Server: Failed to poll client %d", i);
+            Console_Log(FATAL, "Server: Failed to poll client %d", i);
         }
     }
 
@@ -198,7 +211,7 @@ void Server_Sleep(Server* server, double tickStartTimeMs) {
     // Tick overran → calculate skipped ticks
     int skippedTicks = static_cast<int>(elapsed / TICK_MS) - 1;
     if (skippedTicks < 0) skippedTicks = 0;
-    else TraceLog(LOG_WARNING, "Server is running behind! Skipped %d ticks", skippedTicks);
+    Console_Log(SUCCESS, "Server is running behind! Skipped %d ticks", skippedTicks);
 
     server->tick++;
 }
@@ -210,6 +223,7 @@ void Server_Sleep(Server* server, double tickStartTimeMs) {
  * @param server
  */
 void Server_Run(Server* server) {
+    Console_Log(SUCCESS, "Successfully started server");
     while (true) {
         auto tickStart = std::chrono::steady_clock::now();
 
@@ -241,4 +255,5 @@ void Server_Destroy(Server* server) {
         Server_RemoveClient(server, i, DIS_CLOSE);
     }
     delete server;
+    serverRef = nullptr;
 }

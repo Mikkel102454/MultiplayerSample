@@ -5,6 +5,7 @@
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"
+#include "util/dev.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -13,8 +14,8 @@ int main()
 {
     // Initialization
     //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+    const int screenWidth = 1080;
+    const int screenHeight = 720;
 
     InitWindow(screenWidth, screenHeight, "raylib example - multiplayer");
 
@@ -23,39 +24,56 @@ int main()
 
     Net_Init();
 
-    Server* server = new Server();
-    const NetAddress addressServer = Net_ResolveAddress("0.0.0.0", 59332);
-
-    Server_Init(server, addressServer, 4);
-
-    std::thread(Server_Run, server).detach();
-
-    Net_Client client{};
-
-    const NetAddress addressClient = Net_ResolveAddress("127.0.0.1", 59332);
-
-    Client_Init(&client, addressClient);
-    Client_Connect(&client);
-
-    Packet_SendConnect(client.server, "test");
+    Console* console = new Console();
+    Console_Init(console);
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
-        Client_Update(&client);
+
+        if (Client_Has()) {
+            Client_Update(Client_Get());
+        }
+
+        if (IsKeyPressed(KEY_GRAVE)) {
+            Console_SetOpen(Console_Get(), !Console_Get()->open);
+        }
+
+        if (Console_IsOpen(Console_Get())) {
+            Console_HandleInput(console);
+
+            if (GetMouseWheelMove() > 0) {
+                Console_Get()->scroll_offset++;
+            } else if (GetMouseWheelMove() < 0) {
+                Console_Get()->scroll_offset--;
+            }
+        }
         BeginDrawing();
 
         ClearBackground(GRAY);
 
-        if(client.state == IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
-        else if(client.state == CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
-        else if(client.state == READY) DrawText("Ready to play", 10, 50, 20, GREEN);
+        if (Client_Has()) {
+            if(Client_Get()->state == IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
+            else if(Client_Get()->state == CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
+            else if(Client_Get()->state == READY) DrawText("Ready to play", 10, 50, 20, GREEN);
+        }
 
+        if (Console_IsOpen(Console_Get())) {
+            Console_Draw(Console_Get());
+        }
         EndDrawing();
         //----------------------------------------------------------------------------------
     }
 
-    Server_Destroy(server);
+    Console_Destroy(console);
+
+    if (Server_Has()) {
+        Server_Destroy(Server_Get());
+    }
+    if (Client_Has()) {
+        Client_Destroy(Client_Get());
+    }
+
     Net_Shutdown();
     // De-Initialization
     //--------------------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 #include "util/net.h"
 
+#include <charconv>
 #include <iostream>
 #include <ws2tcpip.h>
 #include <winsock2.h>
@@ -15,6 +16,21 @@ void Net_Init() {
 
 void Net_Shutdown() {
     WSACleanup();
+}
+
+bool Net_ParsePort(std::string_view str, uint16_t& out) {
+    unsigned int temp;
+
+    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), temp);
+
+    if (ec != std::errc{} || ptr != str.data() + str.size())
+        return false;
+
+    if (temp > 65535)
+        return false;
+
+    out = static_cast<uint16_t>(temp);
+    return true;
 }
 
 /**

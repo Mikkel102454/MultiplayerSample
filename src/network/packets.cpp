@@ -55,7 +55,7 @@ NetResult Packet_SendAccepted(NetSocket socket) {
 NetResult Packet_SendDisconnect(NetSocket socket, DisconnectReason reason) {
     char buffer[2]{};
 
-    buffer[0] = PCK_MESSAGE;
+    buffer[0] = PCK_DISCONNECT;
     buffer[1] = reason;
 
     return Socket_Send(socket, buffer, sizeof(buffer));

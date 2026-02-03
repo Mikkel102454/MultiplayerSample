@@ -2,6 +2,7 @@
 #define NET_H
 
 #include <cstdint>
+#include <string_view>
 
 enum NetResult {
     NET_OK = 0,
@@ -25,6 +26,7 @@ struct NetSocket {
 
 void Net_Init();
 void Net_Shutdown();
+bool Net_ParsePort(std::string_view str, uint16_t& out);
 
 NetAddress Net_ResolveAddress(const char* hostname, uint16_t port);
 

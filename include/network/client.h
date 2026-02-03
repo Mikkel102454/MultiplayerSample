@@ -18,6 +18,10 @@ struct Net_Client {
     Net_State state{};
 };
 
+Net_Client* Client_Get();
+void Client_Set(Net_Client* client);
+bool Client_Has();
+
 void Client_Init(Net_Client* client, NetAddress addr);
 void Client_Connect(Net_Client* client);
 void Client_Disconnect(Net_Client* client);
