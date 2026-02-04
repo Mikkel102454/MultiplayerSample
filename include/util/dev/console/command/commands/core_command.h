@@ -4,7 +4,7 @@
 
 #ifndef MULTIPLAYERSAMPLE_CORE_COMMAND_H
 #define MULTIPLAYERSAMPLE_CORE_COMMAND_H
-#include "util/dev/command/registry.h"
+#include "util/dev/console/command/registry.h"
 
 void RegisterCoreCommands(CommandRegistry& registry);
 

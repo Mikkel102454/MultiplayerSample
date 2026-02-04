@@ -1,38 +1,35 @@
-#include "../../../../include/util/dev/console/dev.h"
+#include "util/dev/console/console.h"
 
 #include <cstring>
 
 #include "raylib.h"
+#include "util/dev/console/command/registry.h"
 #include "util/dev/console/command/commands/core_command.h"
 
-Console* consoleRef;
-Font consoleFont;
+Console::ConsoleInstance *Console::console = nullptr;
+CommandRegistry *Console::command_registry = nullptr;
 
-
-
-void Console_RegisterCommands(Console* console) {
-    RegisterCoreCommands(console->command_registry);
+void Console::RegisterCommands() {
+    RegisterCoreCommands(*command_registry);
 }
 
-void Console_Init(Console* console) {
-    Console_RegisterCommands(console);
-    consoleRef = console;
-    consoleFont = LoadFontEx(ASSETS_PATH "pixel_game/fonts/VictorMono-Medium.ttf", 14, nullptr, 0);
+void Console::Init() {
+    command_registry = new CommandRegistry();
+    console = new ConsoleInstance();
+    RegisterCommands();
+
+    console->consoleFont = LoadFontEx(ASSETS_PATH "pixel_game/fonts/VictorMono-Medium.ttf", 14, nullptr, 0);
 }
 
-Console* Console_Get() {
-    return consoleRef;
-}
-
-void Console_SetOpen(Console* console, bool open) {
+void Console::SetOpen(const bool open) {
     console->open = open;
 }
 
-bool Console_IsOpen(Console* console) {
+bool Console::IsOpen() {
     return console->open;
 }
 
-void Console_Draw(Console* console)
+void Console::Draw()
 {
     const int padding = 8;
     const int fontSize = 14;
@@ -83,35 +80,35 @@ void Console_Draw(Console* console)
         }
 
         DrawTextEx(
-            consoleFont,
+            console->consoleFont,
             console->log[logIndex]->text.c_str(),
             {
-                (float)padding,
-                (float)(logAreaHeight - padding - lineHeight * (i + 1))
+                static_cast<float>(padding),
+                static_cast<float>(logAreaHeight - padding - lineHeight * (i + 1))
             },
-            (float)fontSize,
+            static_cast<float>(fontSize),
             1.0f,
             color
         );
     }
 
     // input draw thing
-    const float inputY = (float)(height - padding - lineHeight);
+    const float inputY = static_cast<float>(height - padding - lineHeight);
 
     DrawTextEx(
-        consoleFont,
+        console->consoleFont,
         ">",
-        { (float)padding, inputY },
-        (float)fontSize,
+        { static_cast<float>(padding), inputY },
+        static_cast<float>(fontSize),
         1.0f,
         RAYWHITE
     );
 
     DrawTextEx(
-        consoleFont,
+        console->consoleFont,
         console->input,
-        { (float)(padding + 10), inputY },
-        (float)fontSize,
+        { static_cast<float>(padding + 10), inputY },
+        static_cast<float>(fontSize),
         1.0f,
         RAYWHITE
     );
@@ -125,17 +122,17 @@ void Console_Draw(Console* console)
         temp[console->cursor_position] = '\0';
 
         Vector2 textSize = MeasureTextEx(
-            consoleFont,
+            console->consoleFont,
             temp,
             static_cast<float>(fontSize),
             1.0f
         );
 
-        float textStartX = static_cast<float>(padding + 11);
-        float cursorX = textStartX + textSize.x;
+        const float textStartX = static_cast<float>(padding + 11);
+        const float cursorX = textStartX + textSize.x;
 
-        float cursorTopY = inputY;
-        float cursorBottomY = inputY + fontSize;
+        const float cursorTopY = inputY;
+        const float cursorBottomY = inputY + fontSize;
 
         DrawLine(
             static_cast<int>(cursorX),
@@ -147,7 +144,7 @@ void Console_Draw(Console* console)
     }
 }
 
-void Console_Log(LogLevel level, const char* format, ...)
+void Console::Log(const LogLevel level, const char* format, ...)
 {
     char buffer[512];
 
@@ -156,24 +153,24 @@ void Console_Log(LogLevel level, const char* format, ...)
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    if (consoleRef->log_count >= CONSOLE_MAX_LOG)
+    if (console->log_count >= CONSOLE_MAX_LOG)
     {
-        delete consoleRef->log[0];
-        for (int i = 1; i < consoleRef->log_count; i++)
+        delete console->log[0];
+        for (int i = 1; i < console->log_count; i++)
         {
-            consoleRef->log[i - 1] = consoleRef->log[i];
+            console->log[i - 1] = console->log[i];
         }
-        consoleRef->log_count--;
+        console->log_count--;
     }
 
     CommandLine* commandLine = new CommandLine();
     commandLine->level = level;
     commandLine->text = buffer;
 
-    consoleRef->log[consoleRef->log_count++] = commandLine;
+    console->log[console->log_count++] = commandLine;
 }
 
-void Console_AutoComplete(Console* console)
+void Console::AutoComplete()
 {
     size_t len = std::strlen(console->input);
 
@@ -229,7 +226,7 @@ void Console_AutoComplete(Console* console)
 
     if (wordStart == 0)
     {
-        for (const auto& [name, cmd] : console->command_registry.all())
+        for (const auto& [name, cmd] : command_registry->all())
         {
             if (name.starts_with(prefix))
             {
@@ -257,7 +254,7 @@ void Console_AutoComplete(Console* console)
 
     std::string cmdName(tokens[0]);
 
-    Command* cmd = console->command_registry.find(cmdName);
+    Command* cmd = command_registry->find(cmdName);
     if (!cmd)return;
 
     size_t argIndex = 0;
@@ -308,7 +305,7 @@ void Console_AutoComplete(Console* console)
     console->cursor_position = wordStart + completion.size();
 }
 
-void Console_HandleInput(Console* console)
+void Console::HandleInput()
 {
     static double backspaceStartTime = 0.0;
     static double lastRepeatTime = 0.0;
@@ -424,8 +421,8 @@ void Console_HandleInput(Console* console)
     {
         if (console->input[0] != '\0')
         {
-            Console_Log(INFO, TextFormat("> %s", console->input));
-            Console_ExecuteCommand(console);
+            Log(INFO, TextFormat("> %s", console->input));
+            ExecuteCommand();
 
             if (console->history_count >= CONSOLE_MAX_HISTORY) {
                 for (int i = 1; i < console->history_count; i++) {
@@ -468,6 +465,7 @@ void Console_HandleInput(Console* console)
         }
         else
         {
+            console->cursor_position = 0;
             console->history_offset = 0;
             console->input[0] = '\0';
         }
@@ -527,19 +525,26 @@ void Console_HandleInput(Console* console)
     // -------- Autocomplete --------
     if (IsKeyPressed(KEY_TAB))
     {
-        Console_AutoComplete(console);
+        AutoComplete();
+    }
+
+    if (GetMouseWheelMove() > 0) {
+        console->scroll_offset++;
+    } else if (GetMouseWheelMove() < 0) {
+        console->scroll_offset--;
     }
 }
 
-void Console_Destroy(Console* console) {
+void Console::Destroy() {
     for (int i = 0; i < console->log_count; i++) {
         delete console->log[i];
     }
+    delete command_registry;
     delete console;
-    consoleRef = nullptr;
+    console = nullptr;
 }
 
-void Console_ExecuteCommand(Console* console) {
+void Console::ExecuteCommand() {
 
     size_t len = std::strlen(console->input);
 
@@ -561,10 +566,10 @@ void Console_ExecuteCommand(Console* console) {
         argString   = {};
     }
 
-    Command* command =console->command_registry.find(std::string(commandName));
+    Command* command = command_registry->find(std::string(commandName));
 
     if (!command) {
-        Console_Log(FATAL, "Unknown command. Type 'help' to see command list");
+        Log(FATAL, "Unknown command. Type 'help' to see command list");
         return;
     }
 
@@ -574,10 +579,18 @@ void Console_ExecuteCommand(Console* console) {
     ParsedArgs parsed;
 
     if (!parseArgs(*command, tokens, parsed)) {
-        Console_Log(FATAL, "Invalid arguments. Type 'help %s' for usage", std::string(commandName).c_str());
+        Log(FATAL, "Invalid arguments. Type 'help %s' for usage", std::string(commandName).c_str());
         return;
     }
 
     command->execute(parsed);
+}
+
+void Console::ClearLogs() {
+    for (int i = 0; i < CONSOLE_MAX_LOG; i++) {
+        delete console->log[i];
+    }
+    console->log_count = 0;
+    console->scroll_offset = 0;
 }
 

@@ -4,7 +4,7 @@
 
 #include "util/dev/console/command/registry.h"
 
-#include "../../../../../include/util/dev/console/dev.h"
+#include "../../../../../include/util/dev/console/console.h"
 
 const char* ArgTypeToString(ArgType t) {
 
@@ -136,7 +136,7 @@ bool parseArgs(const Command& cmd, const std::vector<std::string_view>& input, P
         ArgValue value;
 
         if (!parseOneArg(input[i], spec.type, value)) {
-            Console_Log(FATAL, "Argument '%s' has invalid type", spec.name.c_str());
+            Console::Log(FATAL, "Argument '%s' has invalid type", spec.name.c_str());
             return false;
         }
 

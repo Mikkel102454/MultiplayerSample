@@ -5,7 +5,7 @@
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"
-#include "../include/util/dev/console/dev.h"
+#include "../include/util/dev/console/console.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -22,58 +22,51 @@ int main()
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
-    Net_Init();
+    Net::Init();
 
-    Console* console = new Console();
-    Console_Init(console);
+    Console::Init();
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
 
-        if (Client_Has()) {
-            Client_Update(Client_Get());
+        if (Client::Has()) {
+            Client::Update();
         }
 
         if (IsKeyPressed(KEY_GRAVE)) {
-            Console_SetOpen(Console_Get(), !Console_Get()->open);
+            Console::SetOpen(!Console::IsOpen());
         }
 
-        if (Console_IsOpen(Console_Get())) {
-            Console_HandleInput(console);
+        if (Console::IsOpen()) Console::HandleInput();
 
-            if (GetMouseWheelMove() > 0) {
-                Console_Get()->scroll_offset++;
-            } else if (GetMouseWheelMove() < 0) {
-                Console_Get()->scroll_offset--;
-            }
-        }
         BeginDrawing();
 
         ClearBackground(GRAY);
 
-        if (Client_Has()) {
-            if(Client_Get()->state == IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
-            else if(Client_Get()->state == CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
-            else if(Client_Get()->state == READY) DrawText("Ready to play", 10, 50, 20, GREEN);
+        if (Client::Has()) {
+            if(Client::Get()->state == Net_State::IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
+            else if(Client::Get()->state == Net_State::CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
+            else if(Client::Get()->state == Net_State::READY) DrawText("Ready to play", 10, 50, 20, GREEN);
         }
 
-        if (Console_IsOpen(Console_Get())) {
-            Console_Draw(Console_Get());
+        if (Console::IsOpen()) {
+            Console::Draw();
         }
         EndDrawing();
         //----------------------------------------------------------------------------------
     }
 
-    if (Server_Has()) {
-        Server_Destroy(Server_Get());
+    if (Server::Has()) {
+        Server::Stop();
+        while (Server::Has()) {}
     }
-    if (Client_Has()) {
-        Client_Destroy(Client_Get());
+    if (Client::Has()) {
+        Client::Destroy();
     }
 
-    Net_Shutdown();
-    Console_Destroy(console);
+    Net::Shutdown();
+    Console::Destroy();
 
     // De-Initialization
     //--------------------------------------------------------------------------------------

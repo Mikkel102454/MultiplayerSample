@@ -39,8 +39,8 @@ set(HEADERS
         include/network/server.h
         src/util/draw.cpp
         include/util/draw.h
-        src/util/dev/console/dev.cpp
-        include/util/dev/console/dev.h
+        src/util/dev/console/console.cpp
+        include/util/dev/console/console.h
         src/util/numbers.cpp
         include/util/numbers.h
         include/util/dev/console/command/registry.h

@@ -4,39 +4,44 @@
 #include <cstdint>
 #include <string_view>
 
-enum NetResult {
-    NET_OK = 0,
-    NET_ERROR = -1,
-    NET_WOULDBLOCK = -2,
-    NET_DISCONNECTED = -3,
+class Net {
+public:
+    enum class Result {
+        NET_OK = 0,
+        NET_ERROR = -1,
+        NET_WOULDBLOCK = -2,
+        NET_DISCONNECTED = -3,
+    };
+
+    enum class Protocol {
+        NET_TCP,
+        NET_UDP,
+    };
+
+    struct Address {
+        uint32_t ip;
+        uint16_t port;
+    };
+
+    static void Init();
+    static void Shutdown();
+    static bool ParsePort(std::string_view str, uint16_t& out);
+
+    static Address ResolveAddress(const char* hostname, uint16_t port);
 };
 
-enum NetProtocol {
-    NET_TCP,
-    NET_UDP,
+class Socket {
+public:
+    uintptr_t handle{};
+
+    static Socket Create(Net::Protocol protocol, bool nonblocking);
+    static Net::Result Bind(Socket sock, Net::Address addr);
+    static Net::Result Connect(Socket sock, Net::Address addr);
+    static Net::Result Listen(Socket sock, int backlog);
+    static Net::Result Close(Socket sock);
+    static Net::Result Accept(Socket sock, Socket* out_socket, Net::Address* out_addr);
+    static Net::Result Read(Socket sock, void* buffer, int length);
+    static Net::Result Send(Socket sock, const void* data, int length);
+    static Net::Result Poll(const Socket* sockets, int count, int timeout_ms, bool* readable, bool* writable);
 };
-struct NetAddress {
-    uint32_t ip;
-    uint16_t port;
-};
-
-struct NetSocket {
-    uintptr_t handle;
-};
-
-void Net_Init();
-void Net_Shutdown();
-bool Net_ParsePort(std::string_view str, uint16_t& out);
-
-NetAddress Net_ResolveAddress(const char* hostname, uint16_t port);
-
-NetSocket Socket_Create(NetProtocol protocol, bool nonblocking);
-NetResult Socket_Bind(NetSocket sock, NetAddress addr);
-NetResult Socket_Connect(NetSocket sock, NetAddress addr);
-NetResult Socket_Listen(NetSocket sock, int backlog);
-NetResult Socket_Close(NetSocket sock);
-NetResult Socket_Accept(NetSocket sock, NetSocket* out_socket, NetAddress* out_addr);
-NetResult Socket_Read(NetSocket sock, void* buffer, int length);
-NetResult Socket_Send(NetSocket sock, const void* data, int length);
-NetResult Socket_Poll(NetSocket* sockets, int count, int timeout_ms, bool* readable, bool* writable);
 #endif //NET_H

@@ -3,7 +3,9 @@
 #include "util/net.h"
 #include <cstdint>
 
-enum PacketType : uint8_t {
+struct PacketData;
+
+enum class PacketType : uint8_t {
     PCK_NOTHING = 0,
     PCK_CONNECT = 1,
     PCK_ACCEPTED = 2,
@@ -14,40 +16,49 @@ enum PacketType : uint8_t {
     PCK_PLAYERLIST = 7
 };
 
-enum DisconnectReason : uint8_t {
+enum class DisconnectReason : uint8_t {
     DIS_LEFT = 0,
     DIS_KICK = 1,
     DIS_TIMEOUT = 2,
     DIS_CLOSE = 3
 };
 
-struct ConnectPacket {
+class Packet {
+public:
+    static Net::Result GetNextType(Socket socket, PacketType* out_pckType);
+
+    static Net::Result Send(Socket socket, const char* buffer, int buffer_size);
+    static Net::Result Receive(Socket socket, char* out_buffer, int buffer_capacity);
+
+    static void Serialize(PacketType type, const PacketData* data, int size, char* out_buffer) ;
+    static void Deserialize(const char* buffer, PacketData* out_packet, int size) ;
+};
+
+
+struct PacketData {
+};
+
+struct ConnectPacket : PacketData {
     char name[25]{};
 };
 
-struct MessagePacket {
+struct MessagePacket : PacketData {
     char message[50]{};
 };
-struct AcceptedPacket {
+struct AcceptedPacket : PacketData {
 };
-struct DisconnectedPacket {
+struct DisconnectedPacket : PacketData {
     DisconnectReason reason{};
 };
-struct PlayerListRequestPacket {
+struct PlayerListRequestPacket : PacketData {
 };
-struct PlayerListHeaderPacket {
+struct PlayerListHeaderPacket : PacketData {
     uint8_t playerCount{};
 };
-struct PlayerListPacket {
+struct PlayerListPacket : PacketData {
     char name[25]{};
     int id{};
 };
 
-NetResult Packet_GetNextType(NetSocket socket, PacketType* out_pckType);
 
-NetResult Packet_Send(NetSocket socket, const char* buffer, size_t buffer_size);
-NetResult Packet_Recv(NetSocket socket, char* out_buffer, size_t buffer_capacity);
-
-void Packet_Serialize(uint8_t type, const void* data, uint16_t size, char* out_buffer);
-void Packet_Deserialize(char* buffer, void* out_packet, uint16_t size);
 #endif //PACKETS_H

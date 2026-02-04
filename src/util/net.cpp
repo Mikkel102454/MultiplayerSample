@@ -7,18 +7,18 @@
 
 #include "network/packets.h"
 
-void Net_Init() {
+void Net::Init() {
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         std::cout << "Failed to init net\n";
     }
 }
 
-void Net_Shutdown() {
+void Net::Shutdown() {
     WSACleanup();
 }
 
-bool Net_ParsePort(std::string_view str, uint16_t& out) {
+bool Net::ParsePort(std::string_view str, uint16_t& out) {
     unsigned int temp;
 
     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), temp);
@@ -41,8 +41,8 @@ bool Net_ParsePort(std::string_view str, uint16_t& out) {
  * @param port
  * @return the NetAddress
  */
-NetAddress Net_ResolveAddress(const char* hostname, uint16_t port) {
-    NetAddress addr{};
+Net::Address Net::ResolveAddress(const char* hostname, uint16_t port) {
+    Net::Address addr{};
     addr.port = port;
 
     int code = inet_pton(AF_INET, hostname, &addr.ip);
@@ -74,11 +74,11 @@ NetAddress Net_ResolveAddress(const char* hostname, uint16_t port) {
  * @param nonblocking
  * @return the NetSocket
  */
-NetSocket Socket_Create(NetProtocol protocol, bool nonblocking){
-    NetSocket sock;
+Socket Socket::Create(Net::Protocol protocol, bool nonblocking){
+    Socket sock;
     SOCKET handle = socket(AF_INET,
-                           protocol == NET_TCP ? SOCK_STREAM : SOCK_DGRAM,
-                           protocol == NET_TCP ? IPPROTO_TCP : IPPROTO_UDP);
+                           protocol == Net::Protocol::NET_TCP ? SOCK_STREAM : SOCK_DGRAM,
+                           protocol == Net::Protocol::NET_TCP ? IPPROTO_TCP : IPPROTO_UDP);
 
     if (handle == INVALID_SOCKET) {
         sock.handle = 0;
@@ -103,17 +103,17 @@ NetSocket Socket_Create(NetProtocol protocol, bool nonblocking){
  * @param addr address to bind to
  * @return the NetResult
  */
-NetResult Socket_Bind(NetSocket sock, NetAddress addr){
+Net::Result Socket::Bind(Socket sock, Net::Address addr){
     SOCKADDR_IN sa;
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = addr.ip;
     sa.sin_port = addr.port;
 
     if (bind(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
-        return NET_ERROR;
+        return Net::Result::NET_ERROR;
     }
 
-    return NET_OK;
+    return Net::Result::NET_OK;
 }
 
 /**
@@ -124,7 +124,7 @@ NetResult Socket_Bind(NetSocket sock, NetAddress addr){
  * @param addr address to bind to
  * @return the NetResult
  */
-NetResult Socket_Connect(NetSocket sock, NetAddress addr){
+Net::Result Socket::Connect(Socket sock, Net::Address addr){
     SOCKADDR_IN sa;
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = addr.ip;
@@ -132,15 +132,15 @@ NetResult Socket_Connect(NetSocket sock, NetAddress addr){
 
     if (connect(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) return NET_WOULDBLOCK;
-        return NET_ERROR;
+        if (err == WSAEWOULDBLOCK) return Net::Result::NET_WOULDBLOCK;
+        return Net::Result::NET_ERROR;
     }
 
-    return NET_OK;
+    return Net::Result::NET_OK;
 }
 
-NetResult Socket_Close(NetSocket sock) {
-    return closesocket(sock.handle) == 0 ? NET_OK : NET_ERROR;
+Net::Result Socket::Close(Socket sock) {
+    return closesocket(sock.handle) == 0 ? Net::Result::NET_OK : Net::Result::NET_ERROR;
 }
 
 /**
@@ -151,8 +151,8 @@ NetResult Socket_Close(NetSocket sock) {
  * @param backlog how many connections can be queued up
  * @return the NetResult
  */
-NetResult Socket_Listen(NetSocket sock, int backlog){
-    return listen(sock.handle, backlog) == 0 ? NET_OK : NET_ERROR;
+Net::Result Socket::Listen(Socket sock, int backlog){
+    return listen(sock.handle, backlog) == 0 ? Net::Result::NET_OK : Net::Result::NET_ERROR;
 }
 
 /**
@@ -164,13 +164,13 @@ NetResult Socket_Listen(NetSocket sock, int backlog){
  * @param out_addr client's address
  * @return the NetResult
  */
-NetResult Socket_Accept(NetSocket sock, NetSocket* out_socket, NetAddress* out_addr){
+Net::Result Socket::Accept(Socket sock, Socket* out_socket, Net::Address* out_addr){
     SOCKADDR_IN sa;
     int len = sizeof(sa);
     SOCKET client = accept(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), &len);
 
     if(client == INVALID_SOCKET) {
-        return NET_ERROR;
+        return Net::Result::NET_ERROR;
     }
 
     if(out_socket != nullptr) out_socket->handle = client;
@@ -179,7 +179,7 @@ NetResult Socket_Accept(NetSocket sock, NetSocket* out_socket, NetAddress* out_a
         out_addr->port = sa.sin_port;
     }
 
-    return NET_OK;
+    return Net::Result::NET_OK;
 }
 
 /**
@@ -188,19 +188,20 @@ NetResult Socket_Accept(NetSocket sock, NetSocket* out_socket, NetAddress* out_a
  *
  * @param sock
  * @param buffer buffer to write to
+ * @param length
  * @return the NetResult
  */
-NetResult Socket_Read(NetSocket sock, void* buffer, int length){
+Net::Result Socket::Read(Socket sock, void* buffer, int length){
     int res = recv(sock.handle, static_cast<char*>(buffer), length, 0);
 
-    if (res == 0) return NET_DISCONNECTED;
+    if (res == 0) return Net::Result::NET_DISCONNECTED;
     if(res == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) return NET_WOULDBLOCK;
-        return NET_ERROR;
+        if (err == WSAEWOULDBLOCK) return Net::Result::NET_WOULDBLOCK;
+        return Net::Result::NET_ERROR;
     }
 
-    return NET_OK;
+    return Net::Result::NET_OK;
 }
 
 /**
@@ -212,14 +213,14 @@ NetResult Socket_Read(NetSocket sock, void* buffer, int length){
  * @param length length of data
  * @return the NetResult
  */
-NetResult Socket_Send(NetSocket sock, const void* data, int length){
+Net::Result Socket::Send(Socket sock, const void* data, int length){
     if(send(sock.handle, static_cast<const char*>(data), length, 0) == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) return NET_WOULDBLOCK;
-        return NET_ERROR;
+        if (err == WSAEWOULDBLOCK) return Net::Result::NET_WOULDBLOCK;
+        return Net::Result::NET_ERROR;
     }
 
-    return NET_OK;
+    return Net::Result::NET_OK;
 }
 
 /**
@@ -231,7 +232,7 @@ NetResult Socket_Send(NetSocket sock, const void* data, int length){
  * @param writable
  * @return
  */
-NetResult Socket_Poll(NetSocket* sockets, int count, int timeout_ms, bool* readable, bool* writable) {
+Net::Result Socket::Poll(const Socket* sockets, int count, int timeout_ms, bool* readable, bool* writable) {
     fd_set readfds;
     fd_set writefds;
 
@@ -251,7 +252,7 @@ NetResult Socket_Poll(NetSocket* sockets, int count, int timeout_ms, bool* reada
     tv.tv_usec = (timeout_ms % 1000) * 1000;
 
     int res = select((int) maxfd + 1, &readfds, &writefds, NULL, &tv);
-    if (res == SOCKET_ERROR) return NET_ERROR;
+    if (res == SOCKET_ERROR) return Net::Result::NET_ERROR;
 
     for (int i = 0; i < count; i++) {
         SOCKET s = sockets[i].handle;
@@ -259,5 +260,5 @@ NetResult Socket_Poll(NetSocket* sockets, int count, int timeout_ms, bool* reada
         writable[i] = FD_ISSET(s, &writefds);
     }
 
-    return NET_OK;
+    return Net::Result::NET_OK;
 }

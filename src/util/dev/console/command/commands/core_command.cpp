@@ -1,7 +1,9 @@
+#include <thread>
+
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"
-#include "util/dev/console/dev.h"
+#include "util/dev/console/console.h"
 #include "util/dev/console/command/auto_completion.h"
 #include "util/dev/console/command/registry.h"
 
@@ -17,21 +19,18 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         },
 
         [](const ParsedArgs& args) {
-            if (Server_Has()) {
-                Console_Log(WARNING, "A server is already active. Please shutdown that server to make a new one");
+            if (Server::Has()) {
+                Console::Log(WARNING, "A server is already active. Please shutdown that server to make a new one");
                 return;
             }
 
             std::string ip = std::get<std::string>(args.values.at("ip"));
             uint16_t port = std::get<uint16_t>(args.values.at("port"));
 
-            Server* server = new Server();
-            const NetAddress addressServer = Net_ResolveAddress(ip.c_str(), port);
+            const Net::Address addressServer = Net::ResolveAddress(ip.c_str(), port);
 
-            Server_Init(server, addressServer, 4);
-             Server_Set(server);
-
-             std::thread(Server_Run, server).detach();
+            Server::Init(addressServer, 4);
+            std::thread(Server::Run).detach();
         }
     });
 
@@ -42,14 +41,14 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         {},
 
         [](const ParsedArgs& args) {
-            if (!Server_Has()) {
-                Console_Log(WARNING, "There is no active server");
+            if (!Server::Has()) {
+                Console::Log(WARNING, "There is no active server");
                 return;
             }
 
-            Server_Get()->stopped = true;
+            Server::Get()->stopped = true;
 
-            Console_Log(INFO, "Successfully shutdown server");
+            Console::Log(INFO, "Successfully shutdown server");
         }
     });
 
@@ -64,29 +63,27 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         },
 
         [](const ParsedArgs& args) {
-            if (Client_Has()) {
-                Console_Log(WARNING, "You are already in a server. Please leave your current server before joining a new one");
+            if (Client::Has()) {
+                Console::Log(WARNING, "You are already in a server. Please leave your current server before joining a new one");
                 return;
             }
 
             std::string ip = std::get<std::string>(args.values.at("ip"));
             uint16_t port = std::get<uint16_t>(args.values.at("port"));
 
-            Net_Client* client = new Net_Client();
-            const NetAddress addressClient = Net_ResolveAddress(ip.c_str(), port);
+            const Net::Address addressClient = Net::ResolveAddress(ip.c_str(), port);
 
-            Client_Init(client, addressClient);
-            Client_Connect(client);
-            Client_Set(client);
+            Client::Init(addressClient);
+            Client::Connect();
 
             std::string name = std::get<std::string>(args.values.at("name"));
 
             ConnectPacket connectPacket{};
             memcpy(&connectPacket.name, name.c_str(), 25);
-            char send_buffer[sizeof(ConnectPacket) + 1];
+            char send_buffer[sizeof(ConnectPacket) + 1]{};
 
-            Packet_Serialize(PCK_CONNECT, &connectPacket, sizeof(connectPacket), send_buffer);
-            Packet_Send(client->server, send_buffer, sizeof(send_buffer));
+            Packet::Serialize(PacketType::PCK_CONNECT, &connectPacket, sizeof(connectPacket), send_buffer);
+            Packet::Send(Client::Get()->server, send_buffer, sizeof(send_buffer));
         }
     });
 
@@ -97,14 +94,12 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         {},
 
         [](const ParsedArgs& args) {
-            if (!Client_Has()) {
-                Console_Log(WARNING, "You are not in a server. Please join a server before you can leave one");
+            if (!Client::Has()) {
+                Console::Log(WARNING, "You are not in a server. Please join a server before you can leave one");
                 return;
             }
 
-            Client_Destroy(Client_Get());
-
-            Console_Log(SUCCESS, "Successfully left server");
+            Client::Destroy();
         }
     });
 
@@ -115,14 +110,15 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         {},
 
         [](const ParsedArgs& args) {
-            if (!Client_Has()) {
-                Console_Log(WARNING, "You are not in a server. Please join a server before you can see active players");
+            if (!Client::Has()) {
+                Console::Log(WARNING, "You are not in a server. Please join a server before you can see active players");
                 return;
             }
 
-            char send_buffer[sizeof(ConnectPacket) + 1];
+            char send_buffer[sizeof(PlayerListRequestPacket) + 1];
 
-            Packet_Send(Client_Get()->server, send_buffer, sizeof(send_buffer));
+            Packet::Serialize(PacketType::PCK_PLAYERLIST_REQUEST, nullptr, 0, send_buffer);
+            Packet::Send(Client::Get()->server, send_buffer, sizeof(send_buffer));
         }
     });
 
@@ -143,10 +139,10 @@ void RegisterCoreCommands(CommandRegistry& registry) {
 
             if (!args.values.contains("command")) {
 
-                Console_Log(INFO, "Available commands:");
+                Console::Log(INFO, "Available commands:");
 
                 for (const auto& [name, cmd] : registry.all()) {
-                    Console_Log(INFO, "  %-12s - %s",
+                    Console::Log(INFO, "  %-12s - %s",
                         name.c_str(),
                         cmd.description.c_str()
                     );
@@ -161,7 +157,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             Command* cmd = registry.find(target);
 
             if (!cmd) {
-                Console_Log(FATAL, "Unknown command: %s", target.c_str());
+                Console::Log(FATAL, "Unknown command: %s", target.c_str());
                 return;
             }
 
@@ -175,16 +171,16 @@ void RegisterCoreCommands(CommandRegistry& registry) {
                     usage += " <" + arg.name + ">";
             }
 
-            Console_Log(INFO, "Usage: %s", usage.c_str());
-            Console_Log(INFO, "Description: %s", cmd->description.c_str());
+            Console::Log(INFO, "Usage: %s", usage.c_str());
+            Console::Log(INFO, "Description: %s", cmd->description.c_str());
 
             if (!cmd->args.empty()) {
 
-                Console_Log(INFO, "Arguments:");
+                Console::Log(INFO, "Arguments:");
 
                 for (const auto& arg : cmd->args) {
 
-                    Console_Log(INFO,
+                    Console::Log(INFO,
                         "  %s (%s)%s",
                         arg.name.c_str(),
                         ArgTypeToString(arg.type),
@@ -202,11 +198,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         {},
 
         [](const ParsedArgs& args) {
-            for (int i = 0; i < CONSOLE_MAX_LOG; i++) {
-                delete Console_Get()->log[i];
-            }
-            Console_Get()->log_count = 0;
-            Console_Get()->scroll_offset = 0;
+            Console::ClearLogs();
         }
     });
 
@@ -219,7 +211,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
         },
 
         [](const ParsedArgs& args) {
-            Console_Log(INFO, "Test command: %s", std::get<std::string>(args.values.at("string")).c_str());
+            Console::Log(INFO, "Test command: %s", std::get<std::string>(args.values.at("string")).c_str());
         }
     });
 }
