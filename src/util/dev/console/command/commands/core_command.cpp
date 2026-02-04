@@ -1,9 +1,9 @@
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"
-#include "util/dev.h"
-#include "util/dev/command/auto_completion.h"
-#include "util/dev/command/registry.h"
+#include "util/dev/console/dev.h"
+#include "util/dev/console/command/auto_completion.h"
+#include "util/dev/console/command/registry.h"
 
 void RegisterCoreCommands(CommandRegistry& registry) {
 
@@ -86,7 +86,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             char send_buffer[sizeof(ConnectPacket) + 1];
 
             Packet_Serialize(PCK_CONNECT, &connectPacket, sizeof(connectPacket), send_buffer);
-            Packet_Send(client->server, send_buffer);
+            Packet_Send(client->server, send_buffer, sizeof(send_buffer));
         }
     });
 
@@ -122,7 +122,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
 
             char send_buffer[sizeof(ConnectPacket) + 1];
 
-            Packet_Send(Client_Get()->server, send_buffer);
+            Packet_Send(Client_Get()->server, send_buffer, sizeof(send_buffer));
         }
     });
 
@@ -161,8 +161,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             Command* cmd = registry.find(target);
 
             if (!cmd) {
-                Console_Log(FATAL, "Unknown command: %s",
-                            target.c_str());
+                Console_Log(FATAL, "Unknown command: %s", target.c_str());
                 return;
             }
 
@@ -177,8 +176,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             }
 
             Console_Log(INFO, "Usage: %s", usage.c_str());
-            Console_Log(INFO, "Description: %s",
-                        cmd->description.c_str());
+            Console_Log(INFO, "Description: %s", cmd->description.c_str());
 
             if (!cmd->args.empty()) {
 
@@ -209,6 +207,19 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             }
             Console_Get()->log_count = 0;
             Console_Get()->scroll_offset = 0;
+        }
+    });
+
+    registry.registerCommand({
+        "test",
+        "test command",
+
+        {
+            {"string", ArgType::STRING, false,}
+        },
+
+        [](const ParsedArgs& args) {
+            Console_Log(INFO, "Test command: %s", std::get<std::string>(args.values.at("string")).c_str());
         }
     });
 }

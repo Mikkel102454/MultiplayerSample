@@ -1,9 +1,9 @@
-#include "util/dev.h"
+#include "../../../../include/util/dev/console/dev.h"
 
 #include <cstring>
 
 #include "raylib.h"
-#include "util/dev/command/commands/core_command.h"
+#include "util/dev/console/command/commands/core_command.h"
 
 Console* consoleRef;
 Font consoleFont;
@@ -118,13 +118,11 @@ void Console_Draw(Console* console)
 
     if (!console->cursor_can_blink || static_cast<int>(GetTime() * 2) % 2 == 0)
     {
-        int len = strlen(console->input);
-        int cursorPos = len - (len - console->cursor_position);
-        if (cursorPos < 0) cursorPos = 0;
+        if (console->cursor_position < 0) console->cursor_position = 0;
 
         char temp[1024];
-        strncpy(temp, console->input, cursorPos);
-        temp[cursorPos] = '\0';
+        strncpy(temp, console->input, console->cursor_position);
+        temp[console->cursor_position] = '\0';
 
         Vector2 textSize = MeasureTextEx(
             consoleFont,
@@ -186,10 +184,39 @@ void Console_AutoComplete(Console* console)
     if (cursor > len) cursor = len;
 
     size_t wordStart = cursor;
-    while (wordStart > 0 && console->input[wordStart - 1] != ' ') wordStart--;
+    bool inQuotes = false;
+
+    // Scan left
+    for (size_t i = cursor; i > 0; i--)
+    {
+        if (console->input[i - 1] == '"')
+            inQuotes = !inQuotes;
+
+        if (!inQuotes && console->input[i - 1] == ' ')
+        {
+            wordStart = i;
+            break;
+        }
+
+        wordStart = i - 1;
+    }
 
     size_t wordEnd = cursor;
-    while (wordEnd < len && console->input[wordEnd] != ' ') wordEnd++;
+    inQuotes = false;
+
+    // Scan right
+    for (size_t i = cursor; i < len; i++)
+    {
+        if (console->input[i] == '"') inQuotes = !inQuotes;
+
+        if (!inQuotes && console->input[i] == ' ')
+        {
+            wordEnd = i;
+            break;
+        }
+
+        wordEnd = i + 1;
+    }
 
     if (cursor != wordEnd) return;
 
@@ -238,11 +265,16 @@ void Console_AutoComplete(Console* console)
     {
         size_t count = 0;
 
+        inQuotes = false;
+
         for (size_t i = 0; i < wordStart; i++)
         {
-            if (console->input[i] == ' ') count++;
-        }
+            if (console->input[i] == '"')
+                inQuotes = !inQuotes;
 
+            if (!inQuotes && console->input[i] == ' ')
+                count++;
+        }
         if (count == 0) return;
 
         argIndex = count - 1;
@@ -358,8 +390,20 @@ void Console_HandleInput(Console* console)
                 {
                     int start = pos;
 
-                    while (start > 0 && console->input[start - 1] == ' ') start--;
-                    while (start > 0 && console->input[start - 1] != ' ') start--;
+                    bool inQuotes = false;
+
+                    for (int i = start - 1; i >= 0; i--)
+                    {
+                        if (console->input[i] == '"') inQuotes = !inQuotes;
+
+                        if (!inQuotes && console->input[i] == ' ')
+                        {
+                            start = i + 1;
+                            break;
+                        }
+
+                        start = i;
+                    }
 
                     memmove(&console->input[start], &console->input[pos], len - pos + 1);
 

@@ -2,9 +2,9 @@
 // Created by mikkel on 2/4/2026.
 //
 
-#include "util/dev/command/registry.h"
+#include "util/dev/console/command/registry.h"
 
-#include "util/dev.h"
+#include "../../../../../include/util/dev/console/dev.h"
 
 const char* ArgTypeToString(ArgType t) {
 
@@ -69,6 +69,7 @@ bool parseOneArg(std::string_view text, ArgType type, ArgValue& out) {
         switch (type) {
 
             case ArgType::STRING:
+                if (text.empty()) return false;
                 out = std::string(text);
                 return true;
 
@@ -121,13 +122,11 @@ bool parseArgs(const Command& cmd, const std::vector<std::string_view>& input, P
 
     // too few args
     if (input.size() < required) {
-        Console_Log(FATAL, "Too few arguments");
         return false;
     }
 
     // too many args
     if (input.size() > cmd.args.size()) {
-        Console_Log(FATAL, "Too many arguments");
         return false;
     }
 

@@ -5,7 +5,7 @@
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"
-#include "util/dev.h"
+#include "../include/util/dev/console/dev.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -65,8 +65,6 @@ int main()
         //----------------------------------------------------------------------------------
     }
 
-    Console_Destroy(console);
-
     if (Server_Has()) {
         Server_Destroy(Server_Get());
     }
@@ -75,6 +73,8 @@ int main()
     }
 
     Net_Shutdown();
+    Console_Destroy(console);
+
     // De-Initialization
     //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context

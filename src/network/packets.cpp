@@ -28,8 +28,8 @@ NetResult Packet_GetNextType(NetSocket socket, PacketType* out_pckType) {
 
 
 // -------- Send Packets ---------
-NetResult Packet_Send(NetSocket socket, const char* buffer) {
-    return Socket_Send(socket, buffer, sizeof(buffer));
+NetResult Packet_Send(NetSocket socket, const char* buffer, size_t buffer_size) {
+    return Socket_Send(socket, buffer, buffer_size);
 }
 
 void Packet_Serialize(uint8_t type, const void* data, uint16_t size, char* out_buffer) {
@@ -39,8 +39,8 @@ void Packet_Serialize(uint8_t type, const void* data, uint16_t size, char* out_b
 }
 // -------- Recv Packets ---------
 
-NetResult Packet_Recv(NetSocket socket, char* out_buffer) {
-    return Socket_Read(socket, out_buffer, sizeof(out_buffer));
+NetResult Packet_Recv(NetSocket socket, char* out_buffer, size_t buffer_capacity) {
+    return Socket_Read(socket, out_buffer, buffer_capacity);
 }
 
 void Packet_Deserialize(char* buffer, void* out_packet, uint16_t size) {

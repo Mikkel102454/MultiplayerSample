@@ -4,7 +4,7 @@
 
 #include "raylib.h"
 #include "network/packets.h"
-#include "util/dev.h"
+#include "../../include/util/dev/console/dev.h"
 
 Net_Client* net_clientRef;
 
@@ -72,7 +72,7 @@ void Client_Update (Net_Client* client){
                     return;
                 case PCK_ACCEPTED: {
                     char recv_buffer[sizeof(AcceptedPacket)];
-                    res = Packet_Recv(client->server, recv_buffer);
+                    res = Packet_Recv(client->server, recv_buffer, sizeof(recv_buffer));
 
                     AcceptedPacket packet;
                     Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
@@ -87,7 +87,7 @@ void Client_Update (Net_Client* client){
                 }
                 case PCK_DISCONNECT: {
                     char recv_buffer[sizeof(DisconnectedPacket)];
-                    res = Packet_Recv(client->server, recv_buffer);
+                    res = Packet_Recv(client->server, recv_buffer, sizeof(recv_buffer));
 
                     DisconnectedPacket packet;
                     Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
@@ -101,7 +101,7 @@ void Client_Update (Net_Client* client){
                 }
                 case PCK_PLAYERLIST_HEADER: {
                     char recv_buffer[sizeof(PlayerListHeaderPacket)];
-                    res = Packet_Recv(client->server, recv_buffer);
+                    res = Packet_Recv(client->server, recv_buffer, sizeof(recv_buffer));
 
                     PlayerListHeaderPacket packet;
                     Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
@@ -115,7 +115,7 @@ void Client_Update (Net_Client* client){
                 }
                 case PCK_PLAYERLIST: {
                     char recv_buffer[sizeof(AcceptedPacket)];
-                    res = Packet_Recv(client->server, recv_buffer);
+                    res = Packet_Recv(client->server, recv_buffer, sizeof(recv_buffer));
 
                     PlayerListPacket packet;
                     Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
@@ -143,7 +143,7 @@ void Client_Disconnect(Net_Client* client) {
     char send_buffer[sizeof(PlayerListHeaderPacket) + 1];
 
     Packet_Serialize(PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), send_buffer);
-    Packet_Send(client->server, send_buffer);
+    Packet_Send(client->server, send_buffer, sizeof(send_buffer));
 
     Socket_Close(client->server);
 

@@ -6,7 +6,7 @@
 #include <thread>
 #include <vector>
 
-#include "dev/command/registry.h"
+#include "../command/registry.h"
 
 #define CONSOLE_MAX_LOG 1000
 #define CONSOLE_MAX_INPUT 256

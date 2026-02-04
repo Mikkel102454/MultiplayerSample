@@ -6,7 +6,7 @@
 
 #include "raylib.h"
 #include "network/packets.h"
-#include "util/dev.h"
+#include "../../include/util/dev/console/dev.h"
 
 Server* serverRef;
 
@@ -70,7 +70,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 return;
             case PCK_DISCONNECT: {
                 char buffer[sizeof(DisconnectedPacket)];
-                res = Packet_Recv(client->sock, buffer);
+                res = Packet_Recv(client->sock, buffer, sizeof(buffer));
 
                 DisconnectedPacket packet;
                 Packet_Deserialize(buffer, &packet, sizeof(packet));
@@ -81,7 +81,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
             }
             case PCK_CONNECT: {
                 char recv_buffer[sizeof(ConnectPacket)];
-                res = Packet_Recv(client->sock, recv_buffer);
+                res = Packet_Recv(client->sock, recv_buffer, sizeof(recv_buffer));
 
                 ConnectPacket packet;
                 Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
@@ -98,13 +98,13 @@ void Client_ProcessPackage(Server* server, Client* client) {
 
                 char send_buffer[sizeof(AcceptedPacket) + 1];
                 Packet_Serialize(PCK_ACCEPTED, nullptr, 0, send_buffer);
-                Packet_Send(client->sock, send_buffer);
+                Packet_Send(client->sock, send_buffer, sizeof(send_buffer));
 
                 break;
             }
             case PCK_PLAYERLIST_REQUEST: {
                 char recv_buffer[sizeof(PlayerListRequestPacket)];
-                res = Packet_Recv(client->sock, recv_buffer);
+                res = Packet_Recv(client->sock, recv_buffer, sizeof(recv_buffer));
 
                 PlayerListRequestPacket packet;
                 Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
@@ -119,7 +119,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 char send_buffer[sizeof(PlayerListHeaderPacket) + 1];
 
                 Packet_Serialize(PCK_PLAYERLIST_REQUEST, &headerPacket, sizeof(headerPacket), send_buffer);
-                Packet_Send(client->sock, send_buffer);
+                Packet_Send(client->sock, send_buffer, sizeof(send_buffer));
 
                 for (int i = 0; i < server->max_clients; i++) {
                     if(!server->clients[i].accepted) continue;
@@ -129,7 +129,7 @@ void Client_ProcessPackage(Server* server, Client* client) {
                     char send_buffer_player[sizeof(PlayerListPacket) + 1];
 
                     Packet_Serialize(PCK_PLAYERLIST_REQUEST, &headerPacket, sizeof(headerPacket), send_buffer);
-                    Packet_Send(client->sock, send_buffer_player);
+                    Packet_Send(client->sock, send_buffer_player, sizeof(send_buffer_player));
                 }
                 break;
             }
@@ -181,7 +181,7 @@ void Server_RemoveClient(Server* server, int id, DisconnectReason reason) {
     char send_buffer[sizeof(PlayerListHeaderPacket) + 1];
 
     Packet_Serialize(PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), send_buffer);
-    Packet_Send(server->clients[id].sock, send_buffer);
+    Packet_Send(server->clients[id].sock, send_buffer, sizeof(send_buffer));
 
     Socket_Close(server->clients[id].sock);
 

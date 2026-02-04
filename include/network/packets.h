@@ -45,8 +45,8 @@ struct PlayerListPacket {
 
 NetResult Packet_GetNextType(NetSocket socket, PacketType* out_pckType);
 
-NetResult Packet_Send(NetSocket socket, const char* buffer);
-NetResult Packet_Recv(NetSocket socket, char* out_buffer);
+NetResult Packet_Send(NetSocket socket, const char* buffer, size_t buffer_size);
+NetResult Packet_Recv(NetSocket socket, char* out_buffer, size_t buffer_capacity);
 
 void Packet_Serialize(uint8_t type, const void* data, uint16_t size, char* out_buffer);
 void Packet_Deserialize(char* buffer, void* out_packet, uint16_t size);
