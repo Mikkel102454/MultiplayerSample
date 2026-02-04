@@ -22,13 +22,15 @@ struct Client {
 };
 
 struct Server {
-    std::unique_ptr<Client[]> clients;
-    int client_count;
-    int max_clients;
+    std::unique_ptr<Client[]> clients = std::make_unique<Client[]>(max_clients);
+    int client_count{};
+    int max_clients{};
 
-    uint64_t tick;
+    uint64_t tick{};
 
-    NetSocket socket;
+    NetSocket socket{};
+
+    bool stopped{};
 };
 Server* Server_Get();
 void Server_Set(Server* server);

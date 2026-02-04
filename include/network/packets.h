@@ -36,28 +36,18 @@ struct DisconnectedPacket {
 struct PlayerListRequestPacket {
 };
 struct PlayerListHeaderPacket {
-    uint8_t playerCount;
+    uint8_t playerCount{};
 };
 struct PlayerListPacket {
     char name[25]{};
-    int id;
+    int id{};
 };
 
 NetResult Packet_GetNextType(NetSocket socket, PacketType* out_pckType);
 
-NetResult Packet_SendConnect(NetSocket socket, const char name[]);
-NetResult Packet_SendMessage(NetSocket socket, const char message[]);
-NetResult Packet_SendAccepted(NetSocket socket);
-NetResult Packet_SendDisconnect(NetSocket socket, DisconnectReason reason);
-NetResult Packet_SendPlayerListHeader(NetSocket socket, uint8_t playerCount);
-NetResult Packet_SendPlayerList(NetSocket socket, int id, const char name[]);
-NetResult Packet_SendPlayerListRequest(NetSocket socket);
+NetResult Packet_Send(NetSocket socket, const char* buffer);
+NetResult Packet_Recv(NetSocket socket, char* out_buffer);
 
-NetResult Packet_RecvConnect(NetSocket socket, ConnectPacket* out_packet);
-NetResult Packet_RecvMessage(NetSocket socket, MessagePacket* out_packet);
-NetResult Packet_RecvAccepted(NetSocket socket, AcceptedPacket* out_packet);
-NetResult Packet_RecvDisconnect(NetSocket socket, DisconnectedPacket* out_packet);
-NetResult Packet_RecvPlayerListHeader(NetSocket socket, PlayerListHeaderPacket* out_packet);
-NetResult Packet_RecvPlayerList(NetSocket socket, PlayerListPacket* out_packet);
-NetResult Packet_RecvPlayerListRequest(NetSocket socket, PlayerListRequestPacket* out_packet);
+void Packet_Serialize(uint8_t type, const void* data, uint16_t size, char* out_buffer);
+void Packet_Deserialize(char* buffer, void* out_packet, uint16_t size);
 #endif //PACKETS_H

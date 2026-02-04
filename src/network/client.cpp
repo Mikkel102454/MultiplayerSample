@@ -71,8 +71,11 @@ void Client_Update (Net_Client* client){
                 case PCK_NOTHING:
                     return;
                 case PCK_ACCEPTED: {
+                    char recv_buffer[sizeof(AcceptedPacket)];
+                    res = Packet_Recv(client->server, recv_buffer);
+
                     AcceptedPacket packet;
-                    res = Packet_RecvAccepted(client->server, &packet);
+                    Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
                     if (res == NET_DISCONNECTED) {
                         Client_Disconnect(client);
                         break;
@@ -83,8 +86,11 @@ void Client_Update (Net_Client* client){
                     break;
                 }
                 case PCK_DISCONNECT: {
+                    char recv_buffer[sizeof(DisconnectedPacket)];
+                    res = Packet_Recv(client->server, recv_buffer);
+
                     DisconnectedPacket packet;
-                    res = Packet_RecvDisconnect(client->server, &packet);
+                    Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
                     if (res == NET_DISCONNECTED) {
                         Client_Disconnect(client);
                         break;
@@ -94,8 +100,11 @@ void Client_Update (Net_Client* client){
                     break;
                 }
                 case PCK_PLAYERLIST_HEADER: {
+                    char recv_buffer[sizeof(PlayerListHeaderPacket)];
+                    res = Packet_Recv(client->server, recv_buffer);
+
                     PlayerListHeaderPacket packet;
-                    res = Packet_RecvPlayerListHeader(client->server, &packet);
+                    Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
                     if (res == NET_DISCONNECTED) {
                         Client_Disconnect(client);
                         break;
@@ -105,8 +114,11 @@ void Client_Update (Net_Client* client){
                     break;
                 }
                 case PCK_PLAYERLIST: {
+                    char recv_buffer[sizeof(AcceptedPacket)];
+                    res = Packet_Recv(client->server, recv_buffer);
+
                     PlayerListPacket packet;
-                    res = Packet_RecvPlayerList(client->server, &packet);
+                    Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
                     if (res == NET_DISCONNECTED) {
                         Client_Disconnect(client);
                         break;
@@ -126,7 +138,13 @@ void Client_Update (Net_Client* client){
 void Client_Disconnect(Net_Client* client) {
     Console_Log(WARNING, "Client: Lost connection to the server");
 
-    Packet_SendDisconnect(client->server, DIS_LEFT);
+    DisconnectedPacket disconnectedPacket{};
+    disconnectedPacket.reason = DIS_LEFT;
+    char send_buffer[sizeof(PlayerListHeaderPacket) + 1];
+
+    Packet_Serialize(PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), send_buffer);
+    Packet_Send(client->server, send_buffer);
+
     Socket_Close(client->server);
 
     client->state = IDLE;

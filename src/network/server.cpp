@@ -69,15 +69,22 @@ void Client_ProcessPackage(Server* server, Client* client) {
             case PCK_NOTHING:
                 return;
             case PCK_DISCONNECT: {
+                char buffer[sizeof(DisconnectedPacket)];
+                res = Packet_Recv(client->sock, buffer);
+
                 DisconnectedPacket packet;
-                res = Packet_RecvDisconnect(client->sock, &packet);
+                Packet_Deserialize(buffer, &packet, sizeof(packet));
+
                 Console_Log(INFO, "Server: Client left the game: %d", packet.reason);
                 Server_RemoveClient(server, client->id, DIS_LEFT);
                 break;
             }
             case PCK_CONNECT: {
+                char recv_buffer[sizeof(ConnectPacket)];
+                res = Packet_Recv(client->sock, recv_buffer);
+
                 ConnectPacket packet;
-                res = Packet_RecvConnect(client->sock, &packet);
+                Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
                 if (res == NET_DISCONNECTED) {
                     Server_RemoveClient(server, client->id, DIS_LEFT);
                     break;
@@ -88,34 +95,41 @@ void Client_ProcessPackage(Server* server, Client* client) {
                 std::memcpy(client->name, &packet.name[0], 25);
                 client->connected = true;
                 client->accepted = true;
-                Packet_SendAccepted(client->sock);
 
-                break;
-            }
-            case PCK_MESSAGE: {
-                MessagePacket packet;
-                res = Packet_RecvMessage(client->sock, &packet);
-                if (res == NET_DISCONNECTED) {
-                    Server_RemoveClient(server, client->id, DIS_LEFT);
-                    break;
-                }
+                char send_buffer[sizeof(AcceptedPacket) + 1];
+                Packet_Serialize(PCK_ACCEPTED, nullptr, 0, send_buffer);
+                Packet_Send(client->sock, send_buffer);
 
-                Console_Log(INFO, "Server: Message from client: %s", packet.message);
                 break;
             }
             case PCK_PLAYERLIST_REQUEST: {
+                char recv_buffer[sizeof(PlayerListRequestPacket)];
+                res = Packet_Recv(client->sock, recv_buffer);
+
                 PlayerListRequestPacket packet;
-                res = Packet_RecvPlayerListRequest(client->sock, &packet);
+                Packet_Deserialize(recv_buffer, &packet, sizeof(packet));
+
                 if (res == NET_DISCONNECTED) {
                     Server_RemoveClient(server, client->id, DIS_LEFT);
                     break;
                 }
 
-                Packet_SendPlayerListHeader(client->sock, server->client_count);
+                PlayerListHeaderPacket headerPacket{};
+                headerPacket.playerCount = server->client_count;
+                char send_buffer[sizeof(PlayerListHeaderPacket) + 1];
+
+                Packet_Serialize(PCK_PLAYERLIST_REQUEST, &headerPacket, sizeof(headerPacket), send_buffer);
+                Packet_Send(client->sock, send_buffer);
 
                 for (int i = 0; i < server->max_clients; i++) {
                     if(!server->clients[i].accepted) continue;
-                    Packet_SendPlayerList(client->sock, i, server->clients[i].name);
+                    PlayerListPacket playerPacket{};
+                    playerPacket.id = i;
+                    std::memcpy(playerPacket.name, server->clients[i].name, 25);
+                    char send_buffer_player[sizeof(PlayerListPacket) + 1];
+
+                    Packet_Serialize(PCK_PLAYERLIST_REQUEST, &headerPacket, sizeof(headerPacket), send_buffer);
+                    Packet_Send(client->sock, send_buffer_player);
                 }
                 break;
             }
@@ -162,10 +176,15 @@ void Server_AcceptClients(Server* server) {
 void Server_RemoveClient(Server* server, int id, DisconnectReason reason) {
     Console_Log(INFO, "Server: Removing client %d", id);
 
+    DisconnectedPacket disconnectedPacket{};
+    disconnectedPacket.reason = reason;
+    char send_buffer[sizeof(PlayerListHeaderPacket) + 1];
 
-    Packet_SendDisconnect(server->clients[id].sock, reason);
+    Packet_Serialize(PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), send_buffer);
+    Packet_Send(server->clients[id].sock, send_buffer);
 
     Socket_Close(server->clients[id].sock);
+
     server->clients[id].connected = false;
     server->clients[id].accepted = false;
     server->client_count--;
@@ -237,6 +256,11 @@ void Server_Sleep(Server* server, double tickStartTimeMs) {
 void Server_Run(Server* server) {
     Console_Log(SUCCESS, "Successfully started server");
     while (true) {
+        if (server->stopped) {
+            // do shutdown logic
+            Server_Destroy(server);
+            break;
+        }
         auto tickStart = std::chrono::steady_clock::now();
 
         // for client shit (important)
@@ -244,8 +268,6 @@ void Server_Run(Server* server) {
         Server_ProcessClients(server);
 
         // Tick logic goes here
-        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
 
         double tickStartMs = std::chrono::duration<double, std::milli>(
                 tickStart.time_since_epoch()
@@ -266,6 +288,7 @@ void Server_Destroy(Server* server) {
         if (!server->clients[i].accepted) continue;
         Server_RemoveClient(server, i, DIS_CLOSE);
     }
+    Socket_Close(server->socket);
     delete server;
     serverRef = nullptr;
 }

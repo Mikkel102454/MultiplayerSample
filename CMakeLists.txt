@@ -43,8 +43,12 @@ set(HEADERS
         include/util/dev.h
         src/util/numbers.cpp
         include/util/numbers.h
-        src/util/dev/commands.cpp
-        include/util/dev/commands.h
+        include/util/dev/command/registry.h
+        src/util/dev/command/registry.cpp
+        src/util/dev/command/commands/core_command.cpp
+        include/util/dev/command/commands/core_command.h
+        src/util/dev/command/auto_completion.cpp
+        include/util/dev/command/auto_completion.h
 )
 
 set(CMAKE_CXX_STANDARD 20)

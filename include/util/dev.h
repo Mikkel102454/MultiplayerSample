@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 
+#include "dev/command/registry.h"
+
 #define CONSOLE_MAX_LOG 1000
 #define CONSOLE_MAX_INPUT 256
 #define CONSOLE_MAX_HISTORY 18
@@ -32,11 +34,11 @@ struct Console {
     int history_offset = 0;
     int log_count = 0;
     int scroll_offset = 0;
+    int cursor_position = 0;
     bool open = false;
+    bool cursor_can_blink = true;
 
-    int command_count = 0;
-
-    std::vector<std::unique_ptr<ConsoleCommand>> commands;
+    CommandRegistry command_registry;
 };
 
 class ConsoleCommand {
