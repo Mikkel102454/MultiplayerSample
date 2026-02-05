@@ -7,5 +7,5 @@ bool IsNumbersOnly(std::string_view str) {
         if (str[i] < '0' || str[i] > '9')
             return false;
     }
-
+    return true;
 }
