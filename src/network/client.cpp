@@ -1,58 +1,52 @@
 #include "network/client.h"
 
+#include "manager/ClientManager.h"
+#include "manager/ConsoleManager.h"
 #include "network/packets.h"
 #include "util/dev/console/console.h"
 
-Client::Net_Client* Client::client = nullptr;
-
-Client::Net_Client* Client::Get() {
-    return client;
-}
-bool Client::Has() {
-    return client != nullptr;
-}
 /**
  *
  * Initializes a new client
  *
- * @param newClient
- * @param addr
+ * @param serverAddr
+ *
  */
-auto Client::Init(Net::Address addr) -> void {
-    client = new Net_Client();
-    client->state = Net_State::IDLE;
-    client->addr = addr;
-    client->server = Socket::Create(Net::Protocol::NET_TCP, true);
+Client::Client(const Net::Address& serverAddr) {
+    mState = NetState::IDLE;
+    mServerAddr = serverAddr;
+    mServer = Socket::create(Net::Protocol::NET_TCP, true);
 }
-void Client::Connect() {
-    client->state = Net_State::CONNECTING;
-    if(Socket::Connect(client->server, client->addr) == Net::Result::NET_ERROR) {
-        Console::Log(WARNING, "Client: Failed to connect socket to server");
 
-        client->state = Net_State::IDLE;
+void Client::connect() {
+    mState = NetState::CONNECTING;
+    if(Socket::connect(mServer, mServerAddr) == Net::Result::NET_ERROR) {
+        ConsoleManager::get().log(WARNING, "Client: Failed to connect socket to server");
+
+        mState = NetState::IDLE;
     }
 }
 
-void Client::Update() {
-    if (client->state == Net_State::IDLE) {
+void Client::update() {
+    if (mState == NetState::IDLE) {
         return;
     }
 
-    Net::Result res = Socket::Poll(&client->server, 1, 0, &client->readable, &client->writeable);
+    Net::Result res = Socket::poll(&mServer, 1, 0, &mReadable, &mWritable);
 
     if (res != Net::Result::NET_OK) {
-        Console::Log(WARNING, "Client: Failed to poll data from server");
+        ConsoleManager::get().log(WARNING, "Client: Failed to poll data from server");
         return;
     }
 
-    if (client->readable) {
+    if (mReadable) {
         while (true) {
             PacketType packetType;
 
-            res = Packet::GetNextType(client->server, &packetType);
+            res = Packet::getNextType(mServer, &packetType);
 
             if (res == Net::Result::NET_DISCONNECTED) {
-                Destroy();
+                ClientManager::leave();
                 break;
             }
 
@@ -63,77 +57,74 @@ void Client::Update() {
                 case PacketType::PCK_NOTHING:
                     return;
                 case PacketType::PCK_ACCEPTED: {
-                    char recv_buffer[sizeof(AcceptedPacket)]{};
-                    res = Packet::Receive(client->server, recv_buffer, sizeof(recv_buffer));
+                    char recvBuffer[sizeof(AcceptedPacket)]{};
+                    res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
                     AcceptedPacket packet;
-                    Packet::Deserialize(recv_buffer, &packet, sizeof(packet));
+                    Packet::deserialize(recvBuffer, &packet, sizeof(packet));
                     if (res == Net::Result::NET_DISCONNECTED) {
-                        Destroy();
+                        ClientManager::leave();
                         break;
                     }
 
-                    client->state = Net_State::READY;
-                    Console::Log(SUCCESS, "Client: Connected to server");
+                    mState = NetState::READY;
+                    ConsoleManager::get().log(SUCCESS, "Client: Connected to server");
                     break;
                 }
                 case PacketType::PCK_DISCONNECT: {
-                    char recv_buffer[sizeof(DisconnectedPacket)]{};
-                    res = Packet::Receive(client->server, recv_buffer, sizeof(recv_buffer));
+                    char recvBuffer[sizeof(DisconnectedPacket)]{};
+                    res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
                     DisconnectedPacket packet;
-                    Packet::Deserialize(recv_buffer, &packet, sizeof(packet));
-                    Destroy();
-                    return;;
+                    Packet::deserialize(recvBuffer, &packet, sizeof(packet));
+                    ClientManager::leave();
+                    return;
                 }
                 case PacketType::PCK_PLAYERLIST_HEADER: {
-                    char recv_buffer[sizeof(PlayerListHeaderPacket)]{};
-                    res = Packet::Receive(client->server, recv_buffer, sizeof(recv_buffer));
+                    char recvBuffer[sizeof(PlayerListHeaderPacket)]{};
+                    res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
                     PlayerListHeaderPacket packet;
-                    Packet::Deserialize(recv_buffer, &packet, sizeof(packet));
+                    Packet::deserialize(recvBuffer, &packet, sizeof(packet));
                     if (res == Net::Result::NET_DISCONNECTED) {
-                        Destroy();
+                        ClientManager::leave();
                         break;
                     }
 
-                    Console::Log(SUCCESS, "Client: There is %d players in this game", packet.playerCount);
+                    ConsoleManager::get().log(SUCCESS, "Client: There is %d players in this game", packet.playerCount);
                     break;
                 }
                 case PacketType::PCK_PLAYERLIST: {
-                    char recv_buffer[sizeof(PlayerListPacket)]{};
-                    res = Packet::Receive(client->server, recv_buffer, sizeof(recv_buffer));
+                    char recvBuffer[sizeof(PlayerListPacket)]{};
+                    res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
                     PlayerListPacket packet;
-                    Packet::Deserialize(recv_buffer, &packet, sizeof(packet));
+                    Packet::deserialize(recvBuffer, &packet, sizeof(packet));
                     if (res == Net::Result::NET_DISCONNECTED) {
-                        Destroy();
+                        ClientManager::leave();
                         break;
                     }
 
-                    Console::Log(SUCCESS, "Client: Client discovered with the name %s and id %d", packet.name, packet.id);
+                    ConsoleManager::get().log(SUCCESS, "Client: Client discovered with the name %s and id %d", packet.name, packet.id);
                     break;
                 }
                 default:
-                    Console::Log(WARNING, "Client: Unknown package type: %d", packetType);
+                    ConsoleManager::get().log(WARNING, "Client: Unknown package type: %d", packetType);
                     return;
             }
         }
     }
 }
 
-void Client::Destroy() {
-    Console::Log(WARNING, "Client: Lost connection to the server");
+Client::~Client() {
+    ConsoleManager::get().log(WARNING, "Client: Lost connection to the server");
 
     DisconnectedPacket disconnectedPacket{};
     disconnectedPacket.reason = DisconnectReason::DIS_LEFT;
-    char send_buffer[sizeof(PlayerListHeaderPacket) + 1]{};
+    char sendBuffer[sizeof(PlayerListHeaderPacket) + 1]{};
 
-    Packet::Serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), send_buffer);
-    Packet::Send(client->server, send_buffer, sizeof(send_buffer));
+    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
+    Packet::send(mServer, sendBuffer, sizeof(sendBuffer));
 
-    Socket::Close(client->server);
-
-    delete client;
-    client = nullptr;
+    Socket::close(mServer);
 }

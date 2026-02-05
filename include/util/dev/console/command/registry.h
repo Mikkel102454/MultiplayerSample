@@ -54,36 +54,36 @@ class CommandRegistry {
 public:
     bool registerCommand(Command cmd) {
 
-        if (commands.contains(cmd.name)) return false; // already exists
+        if (mCommands.contains(cmd.name)) return false; // already exists
 
-        commands.emplace(cmd.name, std::move(cmd));
+        mCommands.emplace(cmd.name, std::move(cmd));
         return true;
     }
 
     Command* find(const std::string& name) {
 
-        auto it = commands.find(name);
+        auto it = mCommands.find(name);
 
-        if (it == commands.end()) return nullptr;
+        if (it == mCommands.end()) return nullptr;
 
         return &it->second;
     }
 
     void remove(const std::string& name) {
-        commands.erase(name);
+        mCommands.erase(name);
     }
 
     const std::unordered_map<std::string, Command>& all() const {
-        return commands;
+        return mCommands;
     }
 
 private:
-    std::unordered_map<std::string, Command> commands;
+    std::unordered_map<std::string, Command> mCommands;
 };
 
-bool parseArgs(const Command& cmd, const std::vector<std::string_view>& input, ParsedArgs& out);
-bool parseOneArg(std::string_view text, ArgType type, ArgValue& out);
-std::vector<std::string_view> splitArgs(std::string_view input);
+bool ParseArgs(const Command& cmd, const std::vector<std::string>& input, ParsedArgs& out);
+bool ParseOneArg(std::string_view text, ArgType type, ArgValue& out);
+std::vector<std::string> SplitArgs(std::string_view input);
 const char* ArgTypeToString(ArgType t);
 
 #endif //MULTIPLAYERSAMPLE_REGISTRY_H

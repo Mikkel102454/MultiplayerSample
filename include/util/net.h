@@ -23,25 +23,25 @@ public:
         uint16_t port;
     };
 
-    static void Init();
-    static void Shutdown();
-    static bool ParsePort(std::string_view str, uint16_t& out);
+    static void init();
+    static void shutdown();
+    static bool parsePort(std::string_view str, uint16_t& out);
 
-    static Address ResolveAddress(const char* hostname, uint16_t port);
+    static Address resolveAddress(const char* hostname, uint16_t port);
 };
 
 class Socket {
 public:
     uintptr_t handle{};
 
-    static Socket Create(Net::Protocol protocol, bool nonblocking);
-    static Net::Result Bind(Socket sock, Net::Address addr);
-    static Net::Result Connect(Socket sock, Net::Address addr);
-    static Net::Result Listen(Socket sock, int backlog);
-    static Net::Result Close(Socket sock);
-    static Net::Result Accept(Socket sock, Socket* out_socket, Net::Address* out_addr);
-    static Net::Result Read(Socket sock, void* buffer, int length);
-    static Net::Result Send(Socket sock, const void* data, int length);
-    static Net::Result Poll(const Socket* sockets, int count, int timeout_ms, bool* readable, bool* writable);
+    static Socket create(Net::Protocol protocol, bool nonblocking);
+    static Net::Result bind(Socket sock, Net::Address addr);
+    static Net::Result connect(Socket sock, Net::Address addr);
+    static Net::Result listen(Socket sock, int backlog);
+    static Net::Result close(Socket sock);
+    static Net::Result accept(Socket sock, Socket* outSocket, Net::Address* outAddr);
+    static Net::Result read(Socket sock, void* buffer, int length);
+    static Net::Result send(Socket sock, const void* data, int length);
+    static Net::Result poll(const Socket* sockets, int count, int timeoutMs, bool* readable, bool* writable);
 };
 #endif //NET_H

@@ -6,7 +6,7 @@
 #define MULTIPLAYERSAMPLE_DRAW_H
 
 
-class draw {
+class Draw {
 };
 
 

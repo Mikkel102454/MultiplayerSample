@@ -1,50 +1,56 @@
 #ifndef SERVER_H
 #define SERVER_H
+#include <atomic>
+
 #include "util/net.h"
 #include <memory>
 #include <cstdint>
+#include <vector>
 
 enum class DisconnectReason : uint8_t;
 
 class Server {
+public:
+    explicit Server(const Net::Address& address, int maxClients);
+    ~Server();
+
+    void run();
+    void stop();
+
+    void removeClient(int id, DisconnectReason reason);
+
+
+    // Status
+    bool isRunning() const;
+
+private:
     struct Client {
-        int id{};
+        int id = -1;
 
         char name[25] {};
 
         Socket sock{};
         Net::Address addr{};
 
-        bool connected{};
-        bool accepted{};
+        bool connected = false;
+        bool accepted = false;
 
-        bool readable{};
-        bool writable{};
+        bool readable = false;
+        bool writable = false;
     };
 
-    static Server* server;
-    Socket socket{};
+    void processPackage(Client* client);
+    void acceptClients();
+    void sleep(double tickStartTimeMs);
+    void processClients();
 
-    static void ProcessPackage(Client* client);
-    static void AcceptClients();
-    static void Sleep(double tickStartTimeMs);
-    static void ProcessClients();
+    Socket mSocket{};
+    int mMaxClients{};
 
-    public:
-        std::unique_ptr<Client[]> clients = std::make_unique<Client[]>(max_clients);
-        int client_count{};
-        int max_clients{};
+    std::vector<Client> mClients;
 
-        uint64_t tick{};
-        bool stopped{};
-        static Server* Get();
-        static bool Has();
-
-        static void Init(Net::Address addr, int max_clients);
-        static void Run();
-        static void RemoveClient(int id, DisconnectReason reason);
-        static void Destroy();
-        static void Stop();
+    uint64_t mTick{};
+    std::atomic<bool> mRunning{false};
 };
 
 

@@ -5,6 +5,7 @@
 #include "util/dev/console/command/registry.h"
 
 #include "../../../../../include/util/dev/console/console.h"
+#include "manager/ConsoleManager.h"
 
 const char* ArgTypeToString(ArgType t) {
 
@@ -19,8 +20,8 @@ const char* ArgTypeToString(ArgType t) {
     return "unknown";
 }
 
-std::vector<std::string_view> splitArgs(std::string_view input) {
-    std::vector<std::string_view> result;
+std::vector<std::string> SplitArgs(std::string_view input) {
+    std::vector<std::string> result;
 
     size_t i = 0;
 
@@ -63,7 +64,7 @@ std::vector<std::string_view> splitArgs(std::string_view input) {
     return result;
 }
 
-bool parseOneArg(std::string_view text, ArgType type, ArgValue& out) {
+bool ParseOneArg(std::string text, ArgType type, ArgValue& out) {
     try {
 
         switch (type) {
@@ -113,7 +114,7 @@ bool parseOneArg(std::string_view text, ArgType type, ArgValue& out) {
     return false;
 }
 
-bool parseArgs(const Command& cmd, const std::vector<std::string_view>& input, ParsedArgs& out) {
+bool ParseArgs(const Command& cmd, const std::vector<std::string>& input, ParsedArgs& out) {
     size_t required = 0;
 
     for (const auto& arg : cmd.args)
@@ -135,8 +136,8 @@ bool parseArgs(const Command& cmd, const std::vector<std::string_view>& input, P
 
         ArgValue value;
 
-        if (!parseOneArg(input[i], spec.type, value)) {
-            Console::Log(FATAL, "Argument '%s' has invalid type", spec.name.c_str());
+        if (!ParseOneArg(input[i], spec.type, value)) {
+            ConsoleManager::get().log(FATAL, "Argument '%s' has invalid type", spec.name.c_str());
             return false;
         }
 

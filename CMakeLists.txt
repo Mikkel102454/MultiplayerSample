@@ -49,6 +49,12 @@ set(HEADERS
         include/util/dev/console/command/commands/core_command.h
         src/util/dev/console/command/auto_completion.cpp
         include/util/dev/console/command/auto_completion.h
+        src/manager/ServerManager.cpp
+        include/manager/ServerManager.h
+        src/manager/ClientManager.cpp
+        include/manager/ClientManager.h
+        src/manager/ConsoleManager.cpp
+        include/manager/ConsoleManager.h
 )
 
 set(CMAKE_CXX_STANDARD 20)

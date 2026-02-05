@@ -11,37 +11,37 @@
  * Get the next package type from a given socket
  *
  * @param socket
- * @param out_pckType
+ * @param outPckType
  * @return
  */
-Net::Result Packet::GetNextType(Socket socket, PacketType* out_pckType) {
+Net::Result Packet::getNextType(Socket socket, PacketType* outPckType) {
     char buffer[1];
-    Net::Result readCode = Socket::Read(socket, buffer, 1);
+    Net::Result readCode = Socket::read(socket, buffer, 1);
     if (readCode != Net::Result::NET_OK) {
         return readCode;
     }
 
-    *out_pckType = static_cast<PacketType>(buffer[0]);
+    *outPckType = static_cast<PacketType>(buffer[0]);
     return Net::Result::NET_OK;
 }
 
 
 // -------- Send Packets ---------
-Net::Result Packet::Send(Socket socket, const char* buffer, int buffer_size) {
-    return Socket::Send(socket, buffer, buffer_size);
+Net::Result Packet::send(Socket socket, const char* buffer, int bufferSize) {
+    return Socket::send(socket, buffer, bufferSize);
 }
 
-void Packet::Serialize(PacketType type, const PacketData* data, int size, char* out_buffer) {
-    out_buffer[0] = static_cast<char>(type);
+void Packet::serialize(PacketType type, const PacketData* data, int size, char* outBuffer) {
+    outBuffer[0] = static_cast<char>(type);
 
-    std::memcpy(&out_buffer[1], data, size);
+    std::memcpy(&outBuffer[1], data, size);
 }
 // -------- Recv Packets ---------
 
-Net::Result Packet::Receive(Socket socket, char* out_buffer, int buffer_capacity) {
-    return Socket::Read(socket, out_buffer, buffer_capacity);
+Net::Result Packet::receive(Socket socket, char* outBuffer, int bufferCapacity) {
+    return Socket::read(socket, outBuffer, bufferCapacity);
 }
 
-void Packet::Deserialize(const char* buffer, PacketData* out_packet, int size) {
-    memcpy(out_packet, &buffer[0], size);
+void Packet::deserialize(const char* buffer, PacketData* outPacket, int size) {
+    memcpy(outPacket, &buffer[0], size);
 }

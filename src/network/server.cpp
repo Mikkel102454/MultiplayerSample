@@ -4,41 +4,29 @@
 #include <iostream>
 #include <thread>
 
+#include "manager/ConsoleManager.h"
 #include "network/packets.h"
 #include "util/dev/console/console.h"
-
-Server *Server::server = nullptr;
-
-Server* Server::Get() {
-    return server;
-}
-bool Server::Has() {
-    return server != nullptr;
-}
-
 
 /**
  *
  * Initialize a server
  *
- * @param addr
- * @param max_clients
+ * @param address
+ * @param maxClients
  */
-void Server::Init(const Net::Address addr, const int max_clients) {
-    server = new Server();
-    server->socket = Socket::Create(Net::Protocol::NET_TCP, true);
-    server->max_clients = max_clients;
-    if (Socket::Bind(server->socket, addr) != Net::Result::NET_OK) {
-        Console::Log(FATAL, "Server: Failed to bind to socket");
+Server::Server(const Net::Address &address, int maxClients) {
+    mSocket = Socket::create(Net::Protocol::NET_TCP, true);
+    this->mMaxClients = maxClients;
+    if (Socket::bind(mSocket, address) != Net::Result::NET_OK) {
+        ConsoleManager::get().log(FATAL, "Server: Failed to bind to socket");
         return;
     }
 
-    if (Socket::Listen(server->socket, max_clients * 2) != Net::Result::NET_OK) {
-        Console::Log(FATAL, "Server: Failed to listen on socket");
+    if (Socket::listen(mSocket, mMaxClients * 2) != Net::Result::NET_OK) {
+        ConsoleManager::get().log(FATAL, "Server: Failed to listen on socket");
         return;
     }
-
-    server->clients = std::make_unique<Client[]>(max_clients);
 }
 
 /**
@@ -47,14 +35,14 @@ void Server::Init(const Net::Address addr, const int max_clients) {
  *
  * @param client
  */
-void Server::ProcessPackage(Client* client) {
+void Server::processPackage(Client* client) {
     while (true) {
         PacketType packetType;
 
-        Net::Result res = Packet::GetNextType(client->sock, &packetType);
+        Net::Result res = Packet::getNextType(client->sock, &packetType);
 
         if (res == Net::Result::NET_DISCONNECTED) {
-            RemoveClient(client->id, DisconnectReason::DIS_LEFT);
+            removeClient(client->id, DisconnectReason::DIS_LEFT);
             break;
         }
         if (res != Net::Result::NET_OK) {
@@ -65,71 +53,71 @@ void Server::ProcessPackage(Client* client) {
                 return;
             case PacketType::PCK_DISCONNECT: {
                 char buffer[sizeof(DisconnectedPacket)]{};
-                res = Packet::Receive(client->sock, buffer, sizeof(buffer));
+                res = Packet::receive(client->sock, buffer, sizeof(buffer));
 
                 DisconnectedPacket packet;
-                Packet::Deserialize(buffer, &packet, sizeof(packet));
+                Packet::deserialize(buffer, &packet, sizeof(packet));
 
-                Console::Log(INFO, "Server: Client left the game: %d", packet.reason);
-                RemoveClient(client->id, DisconnectReason::DIS_LEFT);
+                ConsoleManager::get().log(INFO, "Server: Client left the game: %d", packet.reason);
+                removeClient(client->id, DisconnectReason::DIS_LEFT);
                 break;
             }
             case PacketType::PCK_CONNECT: {
-                char recv_buffer[sizeof(ConnectPacket)]{};
-                res = Packet::Receive(client->sock, recv_buffer, sizeof(recv_buffer));
+                char recvBuffer[sizeof(ConnectPacket)]{};
+                res = Packet::receive(client->sock, recvBuffer, sizeof(recvBuffer));
 
                 ConnectPacket packet;
-                Packet::Deserialize(recv_buffer, &packet, sizeof(packet));
+                Packet::deserialize(recvBuffer, &packet, sizeof(packet));
                 if (res == Net::Result::NET_DISCONNECTED) {
-                    RemoveClient(client->id, DisconnectReason::DIS_LEFT);
+                    removeClient(client->id, DisconnectReason::DIS_LEFT);
                     break;
                 }
 
-                Console::Log(INFO, "Server: New client named: %s", packet.name);
+                ConsoleManager::get().log(INFO, "Server: New client named: %s", packet.name);
 
                 std::memcpy(client->name, &packet.name[0], 25);
                 client->connected = true;
                 client->accepted = true;
 
-                char send_buffer[sizeof(AcceptedPacket) + 1]{};
-                Packet::Serialize(PacketType::PCK_ACCEPTED, nullptr, 0, send_buffer);
-                Packet::Send(client->sock, send_buffer, sizeof(send_buffer));
+                char sendBuffer[sizeof(AcceptedPacket) + 1]{};
+                Packet::serialize(PacketType::PCK_ACCEPTED, nullptr, 0, sendBuffer);
+                Packet::send(client->sock, sendBuffer, sizeof(sendBuffer));
 
                 break;
             }
             case PacketType::PCK_PLAYERLIST_REQUEST: {
-                char recv_buffer[sizeof(PlayerListRequestPacket)]{};
-                res = Packet::Receive(client->sock, recv_buffer, sizeof(recv_buffer));
+                char recvBuffer[sizeof(PlayerListRequestPacket)]{};
+                res = Packet::receive(client->sock, recvBuffer, sizeof(recvBuffer));
 
                 PlayerListRequestPacket packet;
-                Packet::Deserialize(recv_buffer, &packet, sizeof(packet));
+                Packet::deserialize(recvBuffer, &packet, sizeof(packet));
 
                 if (res == Net::Result::NET_DISCONNECTED) {
-                    RemoveClient(client->id, DisconnectReason::DIS_LEFT);
+                    removeClient(client->id, DisconnectReason::DIS_LEFT);
                     break;
                 }
 
                 PlayerListHeaderPacket headerPacket{};
-                headerPacket.playerCount = server->client_count;
-                char send_buffer[sizeof(PlayerListHeaderPacket) + 1]{};
+                headerPacket.playerCount = mClients.size();
+                char sendBuffer[sizeof(PlayerListHeaderPacket) + 1]{};
 
-                Packet::Serialize(PacketType::PCK_PLAYERLIST_HEADER, &headerPacket, sizeof(headerPacket), send_buffer);
-                Packet::Send(client->sock, send_buffer, sizeof(send_buffer));
+                Packet::serialize(PacketType::PCK_PLAYERLIST_HEADER, &headerPacket, sizeof(headerPacket), sendBuffer);
+                Packet::send(client->sock, sendBuffer, sizeof(sendBuffer));
 
-                for (int i = 0; i < server->max_clients; i++) {
-                    if(!server->clients[i].accepted) continue;
+                for (int i = 0; i < mClients.size(); i++) {
+                    if(!mClients[i].accepted) continue;
                     PlayerListPacket playerPacket{};
                     playerPacket.id = i;
-                    std::memcpy(playerPacket.name, server->clients[i].name, 25);
-                    char send_buffer_player[sizeof(PlayerListPacket) + 1]{};
+                    std::memcpy(playerPacket.name, mClients[i].name, 25);
+                    char sendBufferPlayer[sizeof(PlayerListPacket) + 1]{};
 
-                    Packet::Serialize(PacketType::PCK_PLAYERLIST, &playerPacket, sizeof(playerPacket), send_buffer_player);
-                    Packet::Send(client->sock, send_buffer_player, sizeof(send_buffer_player));
+                    Packet::serialize(PacketType::PCK_PLAYERLIST, &playerPacket, sizeof(playerPacket), sendBufferPlayer);
+                    Packet::send(client->sock, sendBufferPlayer, sizeof(sendBufferPlayer));
                 }
                 break;
             }
             default:
-                Console::Log(WARNING, "Server: Unknown package type: %d", packetType);
+                ConsoleManager::get().log(WARNING, "Server: Unknown package type: %d", packetType);
                 return;
         }
     }
@@ -140,23 +128,44 @@ void Server::ProcessPackage(Client* client) {
  * Accepts all queued client connection request if there is space
  *
  */
-void Server::AcceptClients() {
-    for(int i = 0; i < server->max_clients; i++){
-        if(server->clients[i].connected) continue;
+void Server::acceptClients()
+{
 
+    for (int i = 0; i < mMaxClients - mClients.size(); i++)
+    {
         Socket sock{};
         Net::Address addr{};
-        Net::Result result = Socket::Accept(server->socket, &sock, &addr);
+        Net::Result result = Socket::accept(mSocket, &sock, &addr);
         if (result != Net::Result::NET_OK) {
             break;
         }
 
-        server->clients[i].connected = true;
-        server->clients[i].id = i;
-        server->clients[i].sock = sock;
-        server->clients[i].addr = addr;
+        int id = 0;
 
-        server->client_count++;
+        while (true)
+        {
+            bool found = false;
+            for (const auto& client : mClients)
+            {
+                if (client.id == id)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) break;
+            id++;
+        }
+
+        Client client;
+        client.id = id;
+        client.connected = true;
+        client.accepted = true;
+        client.sock = sock;
+        client.addr = addr;
+
+        mClients.push_back(client);
     }
 }
 
@@ -167,21 +176,28 @@ void Server::AcceptClients() {
  * @param id
  * @param reason
  */
-void Server::RemoveClient(const int id, const DisconnectReason reason) {
-    Console::Log(INFO, "Server: Removing client %d", id);
+void Server::removeClient(const int id, const DisconnectReason reason) {
+    ConsoleManager::get().log(INFO, "Server: Removing client %d", id);
 
     DisconnectedPacket disconnectedPacket{};
     disconnectedPacket.reason = reason;
-    char send_buffer[sizeof(PlayerListHeaderPacket) + 1]{};
+    char sendBuffer[sizeof(PlayerListHeaderPacket) + 1]{};
 
-    Packet::Serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), send_buffer);
-    Packet::Send(server->clients[id].sock, send_buffer, sizeof(send_buffer));
+    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
+    Packet::send(mClients[id].sock, sendBuffer, sizeof(sendBuffer));
 
-    Socket::Close(server->clients[id].sock);
+    Socket::close(mClients[id].sock);
 
-    server->clients[id].connected = false;
-    server->clients[id].accepted = false;
-    server->client_count--;
+    for (auto i = mClients.begin(); i != mClients.end(); ++i) {
+        if (i->id == id) {
+            mClients.erase(i);
+            break;
+        }
+    }
+}
+
+bool Server::isRunning() const {
+    return mRunning;
 }
 
 /**
@@ -190,19 +206,19 @@ void Server::RemoveClient(const int id, const DisconnectReason reason) {
  * Starts Client_ProcessPackage for each client
  *
  */
-void Server::ProcessClients() {
-    for (int i = 0; i < server->max_clients; i++) {
-        if (!server->clients[i].connected) continue;
-        if (Socket::Poll(&server->clients[i].sock, 1, 0, &server->clients[i].readable, &server->clients[i].writable) != Net::Result::NET_OK) {
-            Console::Log(FATAL, "Server: Failed to poll client %d", i);
+void Server::processClients() {
+    for (int i = 0; i < mClients.size(); i++) {
+        if (!mClients[i].connected) continue;
+        if (Socket::poll(&mClients[i].sock, 1, 0, &mClients[i].readable, &mClients[i].writable) != Net::Result::NET_OK) {
+            ConsoleManager::get().log(FATAL, "Server: Failed to poll client %d", i);
         }
     }
 
-    for (int i = 0; i < server->max_clients; i++) {
-        if (!server->clients[i].connected) continue;
+    for (int i = 0; i < mClients.size(); i++) {
+        if (!mClients[i].connected) continue;
 
 
-        ProcessPackage(&server->clients[i]);
+        processPackage(&mClients[i]);
     }
 }
 
@@ -212,8 +228,8 @@ void Server::ProcessClients() {
  *
  * @return the number of tick that was skipped because of stress
  */
-void Server::Sleep(const double tickStartTimeMs) {
-    constexpr double TICK_MS = 33.333;
+void Server::sleep(const double tickStartTimeMs) {
+    constexpr double tickMs = 33.333;
 
     const double nowMs =
         std::chrono::duration<double, std::milli>(
@@ -222,21 +238,21 @@ void Server::Sleep(const double tickStartTimeMs) {
 
     const double elapsed = nowMs - tickStartTimeMs;
 
-    if (elapsed < TICK_MS) {
+    if (elapsed < tickMs) {
         std::this_thread::sleep_for(
             std::chrono::milliseconds(
-                static_cast<long long>(TICK_MS - elapsed)
+                static_cast<long long>(tickMs - elapsed)
             )
         );
         return;
     }
 
     // Tick overran → calculate skipped ticks
-    int skippedTicks = static_cast<int>(elapsed / TICK_MS) - 1;
+    int skippedTicks = static_cast<int>(elapsed / tickMs) - 1;
     if (skippedTicks < 0) skippedTicks = 0;
-    Console::Log(SUCCESS, "Server is running behind! Skipped %d ticks", skippedTicks);
+    ConsoleManager::get().log(SUCCESS, "Server is running behind! Skipped %d ticks", skippedTicks);
 
-    server->tick++;
+    mTick++;
 }
 
 /**
@@ -244,28 +260,26 @@ void Server::Sleep(const double tickStartTimeMs) {
  * Start the server. This will start the ticking process and begin accepting clients
  *
  */
-void Server::Run() {
-    Console::Log(SUCCESS, "Successfully started server");
-    while (true) {
-        if (server->stopped) {
-            // do shut down logic
-            Destroy();
-            return;
+void Server::run() {
+    std::thread([&] {
+        ConsoleManager::get().log(SUCCESS, "Successfully started server");
+        mRunning = true;
+        while (mRunning) {
+            auto tickStart = std::chrono::steady_clock::now();
+
+            // for client shit (important)
+            acceptClients();
+            processClients();
+
+            // Tick logic goes here
+
+            double tickStartMs = std::chrono::duration<double, std::milli>(
+                    tickStart.time_since_epoch()
+                ).count();
+
+            sleep(tickStartMs);
         }
-        auto tickStart = std::chrono::steady_clock::now();
-
-        // for client shit (important)
-        AcceptClients();
-        ProcessClients();
-
-        // Tick logic goes here
-
-        double tickStartMs = std::chrono::duration<double, std::milli>(
-                tickStart.time_since_epoch()
-            ).count();
-
-        Sleep(tickStartMs);
-    }
+    }).detach();
 }
 
 /**
@@ -273,16 +287,15 @@ void Server::Run() {
  * Closes the server
  *
  */
-void Server::Destroy() {
-    for (int i = 0; i < server->max_clients; i++) {
-        if (!server->clients[i].accepted) continue;
-        RemoveClient(i, DisconnectReason::DIS_CLOSE);
+Server::~Server() {
+    for (int i = 0; i < mClients.size(); i++) {
+        if (!mClients[i].accepted) continue;
+        removeClient(i, DisconnectReason::DIS_CLOSE);
     }
-    Socket::Close(server->socket);
-    delete server;
-    server = nullptr;
+    Socket::close(mSocket);
 }
 
-void Server::Stop() {
-    server->stopped = true;
+
+void Server::stop() {
+    mRunning = false;
 }

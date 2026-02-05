@@ -6,6 +6,9 @@
 #include "network/packets.h"
 #include "network/server.h"
 #include "../include/util/dev/console/console.h"
+#include "manager/ClientManager.h"
+#include "manager/ConsoleManager.h"
+#include "manager/ServerManager.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -22,51 +25,52 @@ int main()
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
-    Net::Init();
+    Net::init();
 
-    Console::Init();
+    ConsoleManager::create();
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
 
-        if (Client::Has()) {
-            Client::Update();
+        if (ClientManager::has()) {
+            ClientManager::get().update();
         }
 
         if (IsKeyPressed(KEY_GRAVE)) {
-            Console::SetOpen(!Console::IsOpen());
+            if (ConsoleManager::has()) {
+                ConsoleManager::get().setOpen(!ConsoleManager::get().isOpen());
+            }
         }
 
-        if (Console::IsOpen()) Console::HandleInput();
+        if (ConsoleManager::has() && ConsoleManager::get().isOpen()) ConsoleManager::get().handleInput();
 
         BeginDrawing();
 
         ClearBackground(GRAY);
 
-        if (Client::Has()) {
-            if(Client::Get()->state == Net_State::IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
-            else if(Client::Get()->state == Net_State::CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
-            else if(Client::Get()->state == Net_State::READY) DrawText("Ready to play", 10, 50, 20, GREEN);
+        if (ClientManager::has()) {
+            if(ClientManager::get().getState() == NetState::IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
+            else if(ClientManager::get().getState() == NetState::CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
+            else if(ClientManager::get().getState() == NetState::READY) DrawText("Ready to play", 10, 50, 20, GREEN);
         }
 
-        if (Console::IsOpen()) {
-            Console::Draw();
+        if (ConsoleManager::has() && ConsoleManager::get().isOpen()) {
+            ConsoleManager::get().draw();
         }
         EndDrawing();
         //----------------------------------------------------------------------------------
     }
 
-    if (Server::Has()) {
-        Server::Stop();
-        while (Server::Has()) {}
+    if (ServerManager::has()) {
+        ServerManager::stop();
     }
-    if (Client::Has()) {
-        Client::Destroy();
+    if (ClientManager::has()) {
+        ClientManager::leave();
     }
 
-    Net::Shutdown();
-    Console::Destroy();
+    Net::shutdown();
+    ConsoleManager::destroy();
 
     // De-Initialization
     //--------------------------------------------------------------------------------------

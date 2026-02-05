@@ -1,5 +1,6 @@
 #ifndef MULTIPLAYERSAMPLE_DEV_H
 #define MULTIPLAYERSAMPLE_DEV_H
+#include <deque>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -21,54 +22,54 @@ enum LogLevel {
 };
 
 class Console {
+public:
+    // Construct ready-to-use console
+    explicit Console();
+    ~Console();
+
+    // Core
+    void draw();
+    void handleInput();
+    void log(LogLevel level, const char* format, ...);
+
+    void clearLogs();
+
+    //Getter / Setter
+    void setOpen(bool open);
+    bool isOpen() const;
+
+    CommandRegistry* getRegistry() {
+        return &mRegistry;
+    }
+
+private:
     struct CommandLine {
-        LogLevel level;
+        LogLevel level{};
         std::string text;
     };
 
-    struct ConsoleInstance {
-        CommandLine* log[CONSOLE_MAX_LOG] {};
-        char input[CONSOLE_MAX_INPUT] {};
-        std::string history[CONSOLE_MAX_HISTORY] {};
-        int history_count = 0;
-        int history_offset = 0;
-        int log_count = 0;
-        int scroll_offset = 0;
-        int cursor_position = 0;
-        bool open = false;
-        bool cursor_can_blink = true;
+    void executeCommand();
+    void autoComplete();
 
+    // Dependencies
+    CommandRegistry mRegistry{};
 
+    // Logs
+    std::deque<CommandLine> mLogs;
 
-        Font consoleFont;
-    };
-    static CommandRegistry* command_registry;
+    // Input
+    std::string mInput;
+    std::vector<std::string> mHistory;
 
-    static ConsoleInstance* console;
+    int mHistoryOffset = 0;
+    int mScrollOffset = 0;
+    int mCursorPos = 0;
 
-    static void ExecuteCommand();
+    bool mOpen = false;
+    bool mCursorBlink = true;
 
-    static void AutoComplete();
-public:
-    static void Init();
-
-    static void SetOpen(bool open);
-    static bool IsOpen();
-
-    static void Draw();
-    static void Log(LogLevel level, const char* format, ...);
-    static void HandleInput();
-
-    static void Destroy();
-
-    static void RegisterCommands();
-    static void ClearLogs();
-
-    static CommandRegistry* GetCommandRegistry() {
-        return command_registry;
-    }
+    Font mFont;
 };
-
 
 class ConsoleCommand {
 public:

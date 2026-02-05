@@ -6,30 +6,21 @@
 #include "util/dev/console/command/registry.h"
 #include "util/dev/console/command/commands/core_command.h"
 
-Console::ConsoleInstance *Console::console = nullptr;
-CommandRegistry *Console::command_registry = nullptr;
+Console::Console() {
+    RegisterCoreCommands(mRegistry);
 
-void Console::RegisterCommands() {
-    RegisterCoreCommands(*command_registry);
+    mFont = LoadFontEx(ASSETS_PATH "pixel_game/fonts/VictorMono-Medium.ttf", 14, nullptr, 0);
 }
 
-void Console::Init() {
-    command_registry = new CommandRegistry();
-    console = new ConsoleInstance();
-    RegisterCommands();
-
-    console->consoleFont = LoadFontEx(ASSETS_PATH "pixel_game/fonts/VictorMono-Medium.ttf", 14, nullptr, 0);
+void Console::setOpen(bool open) {
+    mOpen = open;
 }
 
-void Console::SetOpen(const bool open) {
-    console->open = open;
+bool Console::isOpen() const {
+    return mOpen;
 }
 
-bool Console::IsOpen() {
-    return console->open;
-}
-
-void Console::Draw()
+void Console::draw()
 {
     const int padding = 8;
     const int fontSize = 14;
@@ -47,21 +38,21 @@ void Console::Draw()
     int maxVisibleLines = (logAreaHeight - padding * 2) / lineHeight;
 
     // clamp scroll offset
-    if (console->scroll_offset < 0)
-        console->scroll_offset = 0;
+    if (mScrollOffset < 0)
+        mScrollOffset = 0;
 
     int maxScroll =
-        console->log_count > maxVisibleLines
-        ? console->log_count - maxVisibleLines
+        mLogs.size() > maxVisibleLines
+        ? mLogs.size() - maxVisibleLines
         : 0;
 
-    if (console->scroll_offset > maxScroll)
-        console->scroll_offset = maxScroll;
+    if (mScrollOffset > maxScroll)
+        mScrollOffset = maxScroll;
 
-    if (maxVisibleLines > console->log_count)
-        maxVisibleLines = console->log_count;
+    if (maxVisibleLines > mLogs.size())
+        maxVisibleLines = mLogs.size();
 
-    int start = console->log_count - 1 - console->scroll_offset;
+    int start = mLogs.size() - 1 - mScrollOffset;
 
     // draw logs
     for (int i = 0; i < maxVisibleLines; i++)
@@ -71,7 +62,7 @@ void Console::Draw()
             break;
 
         Color color = RAYWHITE;
-        switch (console->log[logIndex]->level)
+        switch (mLogs[logIndex].level)
         {
             case FATAL:   color = RED;    break;
             case WARNING: color = YELLOW; break;
@@ -80,8 +71,8 @@ void Console::Draw()
         }
 
         DrawTextEx(
-            console->consoleFont,
-            console->log[logIndex]->text.c_str(),
+            mFont,
+            mLogs[logIndex].text.c_str(),
             {
                 static_cast<float>(padding),
                 static_cast<float>(logAreaHeight - padding - lineHeight * (i + 1))
@@ -96,7 +87,7 @@ void Console::Draw()
     const float inputY = static_cast<float>(height - padding - lineHeight);
 
     DrawTextEx(
-        console->consoleFont,
+        mFont,
         ">",
         { static_cast<float>(padding), inputY },
         static_cast<float>(fontSize),
@@ -105,25 +96,23 @@ void Console::Draw()
     );
 
     DrawTextEx(
-        console->consoleFont,
-        console->input,
+        mFont,
+        mInput.c_str(),
         { static_cast<float>(padding + 10), inputY },
         static_cast<float>(fontSize),
         1.0f,
         RAYWHITE
     );
 
-    if (!console->cursor_can_blink || static_cast<int>(GetTime() * 2) % 2 == 0)
+    if (!mCursorBlink || static_cast<int>(GetTime() * 2) % 2 == 0)
     {
-        if (console->cursor_position < 0) console->cursor_position = 0;
+        if (mCursorPos < 0) mCursorPos = 0;
 
-        char temp[1024];
-        strncpy(temp, console->input, console->cursor_position);
-        temp[console->cursor_position] = '\0';
+        std::string temp = mInput.substr(0, mCursorPos);
 
         Vector2 textSize = MeasureTextEx(
-            console->consoleFont,
-            temp,
+            mFont,
+            temp.c_str(),
             static_cast<float>(fontSize),
             1.0f
         );
@@ -144,7 +133,7 @@ void Console::Draw()
     }
 }
 
-void Console::Log(const LogLevel level, const char* format, ...)
+void Console::log(LogLevel level, const char* format, ...)
 {
     char buffer[512];
 
@@ -153,43 +142,31 @@ void Console::Log(const LogLevel level, const char* format, ...)
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    if (console->log_count >= CONSOLE_MAX_LOG)
-    {
-        delete console->log[0];
-        for (int i = 1; i < console->log_count; i++)
-        {
-            console->log[i - 1] = console->log[i];
-        }
-        console->log_count--;
+    if (mLogs.size() >= CONSOLE_MAX_LOG) {
+        mLogs.pop_front();
     }
 
-    CommandLine* commandLine = new CommandLine();
-    commandLine->level = level;
-    commandLine->text = buffer;
-
-    console->log[console->log_count++] = commandLine;
+    mLogs.push_back(CommandLine{
+        level,
+        std::string(buffer)
+    });
 }
 
-void Console::AutoComplete()
-{
-    size_t len = std::strlen(console->input);
+void Console::autoComplete() {
+    if (mInput.empty()) return;
 
-    if (len == 0) return;
+    if (mCursorPos > mInput.length()) mCursorPos = mInput.length();
 
-    size_t cursor = console->cursor_position;
-
-    if (cursor > len) cursor = len;
-
-    size_t wordStart = cursor;
+    size_t wordStart = mCursorPos;
     bool inQuotes = false;
 
     // Scan left
-    for (size_t i = cursor; i > 0; i--)
+    for (size_t i = mCursorPos; i > 0; i--)
     {
-        if (console->input[i - 1] == '"')
+        if (mInput[i - 1] == '"')
             inQuotes = !inQuotes;
 
-        if (!inQuotes && console->input[i - 1] == ' ')
+        if (!inQuotes && mInput[i - 1] == ' ')
         {
             wordStart = i;
             break;
@@ -198,15 +175,15 @@ void Console::AutoComplete()
         wordStart = i - 1;
     }
 
-    size_t wordEnd = cursor;
+    size_t wordEnd = mCursorPos;
     inQuotes = false;
 
     // Scan right
-    for (size_t i = cursor; i < len; i++)
+    for (size_t i = mCursorPos; i < mInput.length(); i++)
     {
-        if (console->input[i] == '"') inQuotes = !inQuotes;
+        if (mInput[i] == '"') inQuotes = !inQuotes;
 
-        if (!inQuotes && console->input[i] == ' ')
+        if (!inQuotes && mInput[i] == ' ')
         {
             wordEnd = i;
             break;
@@ -215,67 +192,53 @@ void Console::AutoComplete()
         wordEnd = i + 1;
     }
 
-    if (cursor != wordEnd) return;
+    if (mCursorPos != wordEnd) return;
 
-    std::string_view prefix(console->input + wordStart, cursor - wordStart);
+    std::string prefix = mInput.substr(wordStart, mCursorPos - wordStart);
 
-    std::string_view input(console->input, len);
-    auto tokens = splitArgs(input);
+    auto tokens = SplitArgs(mInput);
 
     if (tokens.empty()) return;
 
     if (wordStart == 0)
     {
-        for (const auto& [name, cmd] : command_registry->all())
+        for (const auto& [name, cmd] : mRegistry.all())
         {
-            if (name.starts_with(prefix))
-            {
-                std::string newInput;
+            if (!name.starts_with(prefix)) continue;
+            std::string newInput;
 
-                newInput += name;
+            newInput += name;
+            newInput += mInput.substr(wordEnd);
 
-                newInput.append(console->input + wordEnd, len - wordEnd);
+            mInput = std::move(newInput);
+            mCursorPos = name.size();
 
-                size_t max = sizeof(console->input) - 1;
-                size_t copyLen = std::min(newInput.size(), max);
-
-                std::memcpy(console->input, newInput.data(), copyLen);
-
-                console->input[copyLen] = '\0';
-
-                console->cursor_position = name.size();
-
-                return;
-            }
+            return;
         }
 
         return;
     }
 
-    std::string cmdName(tokens[0]);
+    const std::string& cmdName = tokens[0];
 
-    Command* cmd = command_registry->find(cmdName);
+    Command* cmd = mRegistry.find(cmdName);
     if (!cmd)return;
 
-    size_t argIndex = 0;
+    int argIndex = 0;
+    int count = 0;
+    inQuotes = false;
 
+    for (int i = 0; i < wordStart; ++i)
     {
-        size_t count = 0;
+        if (mInput[i] == '"')
+            inQuotes = !inQuotes;
 
-        inQuotes = false;
-
-        for (size_t i = 0; i < wordStart; i++)
-        {
-            if (console->input[i] == '"')
-                inQuotes = !inQuotes;
-
-            if (!inQuotes && console->input[i] == ' ')
-                count++;
-        }
-        if (count == 0) return;
-
-        argIndex = count - 1;
+        if (!inQuotes && mInput[i] == ' ')
+            count++;
     }
+    if (count == 0) return;
+
+    argIndex = count - 1;
 
     if (argIndex >= cmd->args.size()) return;
 
@@ -291,306 +254,327 @@ void Console::AutoComplete()
 
     std::string newInput;
 
-    newInput.append(console->input, wordStart);
+    newInput += mInput.substr(0, wordStart);
     newInput += completion;
-    newInput.append(console->input + wordEnd, len - wordEnd);
+    newInput += mInput.substr(wordEnd);
 
-    size_t max = sizeof(console->input) - 1;
-    size_t copyLen = std::min(newInput.size(), max);
-
-    std::memcpy(console->input, newInput.data(), copyLen);
-
-    console->input[copyLen] = '\0';
-
-    console->cursor_position = wordStart + completion.size();
+    mInput = std::move(newInput);
+    mCursorPos = wordStart + completion.size();
 }
 
-void Console::HandleInput()
+void Console::handleInput()
 {
-    static double backspaceStartTime = 0.0;
-    static double lastRepeatTime = 0.0;
+    static double backspaceStart = 0.0;
+    static double lastRepeat = 0.0;
 
-    const double BACKSPACE_DELAY  = 0.30;
-    const double BACKSPACE_REPEAT = 0.05;
+    static double arrowStart = 0.0;
+    static double lastArrowRepeat = 0.0;
 
-    static double arrowStartTime = 0;
-    static double lastArrowRepeat = 0;
+    const double repeatDelay = 0.30;
+    const double repeatRate = 0.05;
 
     double now = GetTime();
+
     bool userEditing = false;
 
-    // -------- Character input --------
+    // ==================================================
+    // Character input
+    // ==================================================
     int key = GetCharPressed();
+
     while (key > 0)
     {
-        int len = strlen(console->input);
-
-        if (key >= 32 && key <= 126 && len < CONSOLE_MAX_INPUT - 1)
+        if (key >= 32 && key <= 126)
         {
-            userEditing = true;
-            int pos = console->cursor_position;
+            if (mInput.size() < CONSOLE_MAX_INPUT - 1)
+            {
+                userEditing = true;
 
-            memmove(&console->input[pos + 1], &console->input[pos], len - pos + 1);
+                mInput.insert(
+                    mCursorPos,
+                    1,
+                    static_cast<char>(key)
+                );
 
-            console->input[pos] = (char)key;
-            console->cursor_position++;
+                ++mCursorPos;
+            }
         }
 
         key = GetCharPressed();
     }
 
-    // -------- Backspace handling --------
-    bool ctrlDown = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    // ==================================================
+    // Backspace
+    // ==================================================
+    bool ctrlDown =
+        IsKeyDown(KEY_LEFT_CONTROL) ||
+        IsKeyDown(KEY_RIGHT_CONTROL);
 
-    if (IsKeyPressed(KEY_BACKSPACE))
+    auto handleBackspace = [&]()
     {
-        backspaceStartTime = GetTime();
-        lastRepeatTime = backspaceStartTime;
+        if (mCursorPos == 0 || mInput.empty())
+            return;
 
-        int len = strlen(console->input);
-        int pos = console->cursor_position;
-
-        if (pos > 0 && len > 0)
+        if (ctrlDown)
         {
-            if (ctrlDown)
+            size_t start = mCursorPos;
+
+            // Skip spaces
+            while (start > 0 && mInput[start - 1] == ' ')
+                --start;
+
+            // Skip word
+            bool inQuotes = false;
+
+            for (size_t i = start; i > 0; --i)
             {
-                int start = pos;
+                if (mInput[i - 1] == '"')
+                    inQuotes = !inQuotes;
 
-                while (start > 0 && console->input[start - 1] == ' ')start--;
-                while (start > 0 && console->input[start - 1] != ' ')start--;
-
-                memmove(&console->input[start], &console->input[pos], len - pos + 1);
-
-                console->cursor_position = start;
-            }
-            else
-            {
-                memmove(&console->input[pos - 1], &console->input[pos], len - pos + 1);
-
-                console->cursor_position--;
-            }
-        }
-    }
-    else if (IsKeyDown(KEY_BACKSPACE))
-    {
-        if (now - backspaceStartTime >= BACKSPACE_DELAY &&
-            now - lastRepeatTime >= BACKSPACE_REPEAT)
-        {
-            lastRepeatTime = now;
-
-            int len = strlen(console->input);
-            int pos = console->cursor_position;
-
-            if (pos > 0 && len > 0)
-            {
-                if (ctrlDown)
+                if (!inQuotes && mInput[i - 1] == ' ')
                 {
-                    int start = pos;
-
-                    bool inQuotes = false;
-
-                    for (int i = start - 1; i >= 0; i--)
-                    {
-                        if (console->input[i] == '"') inQuotes = !inQuotes;
-
-                        if (!inQuotes && console->input[i] == ' ')
-                        {
-                            start = i + 1;
-                            break;
-                        }
-
-                        start = i;
-                    }
-
-                    memmove(&console->input[start], &console->input[pos], len - pos + 1);
-
-                    console->cursor_position = start;
+                    start = i;
+                    break;
                 }
-                else
-                {
-                    memmove(&console->input[pos - 1], &console->input[pos], len - pos + 1);
 
-                    console->cursor_position--;
-                }
-            }
-        }
-    }
-
-    // -------- Enter --------
-    if (IsKeyPressed(KEY_ENTER))
-    {
-        if (console->input[0] != '\0')
-        {
-            Log(INFO, TextFormat("> %s", console->input));
-            ExecuteCommand();
-
-            if (console->history_count >= CONSOLE_MAX_HISTORY) {
-                for (int i = 1; i < console->history_count; i++) {
-                    console->history[i - 1] = console->history[i];
-                }
-                console->history_count--;
+                start = i - 1;
             }
 
-            console->history[console->history_count] = console->input;
-            console->history_count++;
-
-            console->input[0] = '\0';
-            console->history_offset = 0;
-        }
-    }
-
-    if (IsKeyPressed(KEY_UP))
-    {
-        if (console->history_count > 0 && console->history_offset < console->history_count)
-        {
-            console->history_offset++;
-
-            int index = console->history_count - console->history_offset;
-            strncpy(console->input, console->history[index].c_str(), sizeof(console->input) - 1);
-            console->input[sizeof(console->input) - 1] = '\0';
-            console->cursor_position = strlen(console->input);
-        }
-    }
-
-    if (IsKeyPressed(KEY_DOWN))
-    {
-        if (console->history_offset > 1)
-        {
-            console->history_offset--;
-
-            int index = console->history_count - console->history_offset;
-            strncpy(console->input, console->history[index].c_str(), sizeof(console->input) - 1);
-            console->input[sizeof(console->input) - 1] = '\0';
-            console->cursor_position = strlen(console->input);
+            mInput.erase(start, mCursorPos - start);
+            mCursorPos = start;
         }
         else
         {
-            console->cursor_position = 0;
-            console->history_offset = 0;
-            console->input[0] = '\0';
+            mInput.erase(mCursorPos - 1, 1);
+            --mCursorPos;
+        }
+    };
+
+    if (IsKeyPressed(KEY_BACKSPACE))
+    {
+        backspaceStart = now;
+        lastRepeat = now;
+
+        handleBackspace();
+    }
+    else if (IsKeyDown(KEY_BACKSPACE))
+    {
+        if (now - backspaceStart >= repeatDelay &&
+            now - lastRepeat >= repeatRate)
+        {
+            lastRepeat = now;
+
+            handleBackspace();
         }
     }
 
+    // ==================================================
+    // Enter
+    // ==================================================
+    if (IsKeyPressed(KEY_ENTER))
+    {
+        if (!mInput.empty())
+        {
+            log(INFO, "> %s", mInput.c_str());
+            executeCommand();
+
+            mHistory.push_back(mInput);
+
+            if (mHistory.size() > CONSOLE_MAX_HISTORY)
+                mHistory.erase(mHistory.begin());
+
+            mInput.clear();
+            mCursorPos = 0;
+            mHistoryOffset = 0;
+        }
+    }
+
+    // ==================================================
+    // History Up
+    // ==================================================
+    if (IsKeyPressed(KEY_UP))
+    {
+        if (!mHistory.empty() &&
+            mHistoryOffset < mHistory.size())
+        {
+            ++mHistoryOffset;
+
+            size_t index =
+                mHistory.size() - mHistoryOffset;
+
+            mInput = mHistory[index];
+            mCursorPos = mInput.size();
+        }
+    }
+
+    // ==================================================
+    // History Down
+    // ==================================================
+    if (IsKeyPressed(KEY_DOWN))
+    {
+        if (mHistoryOffset > 1)
+        {
+            --mHistoryOffset;
+
+            size_t index =
+                mHistory.size() - mHistoryOffset;
+
+            mInput = mHistory[index];
+            mCursorPos = mInput.size();
+        }
+        else
+        {
+            mHistoryOffset = 0;
+            mInput.clear();
+            mCursorPos = 0;
+        }
+    }
+
+    // ==================================================
+    // Left Arrow
+    // ==================================================
     if (IsKeyPressed(KEY_LEFT))
     {
-        arrowStartTime = GetTime();
-        lastArrowRepeat = arrowStartTime;
+        arrowStart = now;
+        lastArrowRepeat = now;
 
-        if (console->cursor_position > 0)
-            console->cursor_position--;
+        if (mCursorPos > 0)
+            --mCursorPos;
     }
     else if (IsKeyDown(KEY_LEFT))
     {
-        if (now - arrowStartTime >= BACKSPACE_DELAY &&
-            now - lastArrowRepeat >= BACKSPACE_REPEAT)
+        if (now - arrowStart >= repeatDelay &&
+            now - lastArrowRepeat >= repeatRate)
         {
             lastArrowRepeat = now;
 
-            if (console->cursor_position > 0)
-                console->cursor_position--;
+            if (mCursorPos > 0)
+                --mCursorPos;
         }
     }
 
-    // -------- Right Arrow --------
+    // ==================================================
+    // Right Arrow
+    // ==================================================
     if (IsKeyPressed(KEY_RIGHT))
     {
-        arrowStartTime = GetTime();
-        lastArrowRepeat = GetTime();
+        arrowStart = now;
+        lastArrowRepeat = now;
 
-        int len = strlen(console->input);
-
-        if (console->cursor_position < len)
-            console->cursor_position++;
+        if (mCursorPos < mInput.size())
+            ++mCursorPos;
     }
     else if (IsKeyDown(KEY_RIGHT))
     {
-        if (now - arrowStartTime >= BACKSPACE_DELAY &&
-            now - lastArrowRepeat >= BACKSPACE_REPEAT)
+        if (now - arrowStart >= repeatDelay &&
+            now - lastArrowRepeat >= repeatRate)
         {
             lastArrowRepeat = now;
 
-            int len = strlen(console->input);
-
-            if (console->cursor_position < len)
-                console->cursor_position++;
+            if (mCursorPos < mInput.size())
+                ++mCursorPos;
         }
     }
 
-    bool arrowActive = IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_RIGHT);
-    bool backspaceActive = IsKeyDown(KEY_BACKSPACE);
+    // ==================================================
+    // Cursor blink
+    // ==================================================
+    bool arrowActive =
+        IsKeyDown(KEY_LEFT) ||
+        IsKeyDown(KEY_RIGHT);
 
-    if (!arrowActive && !backspaceActive && !userEditing) console->cursor_can_blink = true;
-    else console->cursor_can_blink = false;
+    bool backspaceActive =
+        IsKeyDown(KEY_BACKSPACE);
 
-    // -------- Autocomplete --------
+    mCursorBlink =
+        !(arrowActive || backspaceActive || userEditing);
+
+    // ==================================================
+    // Autocomplete
+    // ==================================================
     if (IsKeyPressed(KEY_TAB))
     {
-        AutoComplete();
+        autoComplete();
     }
 
-    if (GetMouseWheelMove() > 0) {
-        console->scroll_offset++;
-    } else if (GetMouseWheelMove() < 0) {
-        console->scroll_offset--;
-    }
+    // ==================================================
+    // Scroll
+    // ==================================================
+    float wheel = GetMouseWheelMove();
+
+    if (wheel > 0)
+        ++mScrollOffset;
+    else if (wheel < 0)
+        --mScrollOffset;
 }
 
-void Console::Destroy() {
-    for (int i = 0; i < console->log_count; i++) {
-        delete console->log[i];
-    }
-    delete command_registry;
-    delete console;
-    console = nullptr;
+
+Console::~Console() {
 }
 
-void Console::ExecuteCommand() {
+void Console::executeCommand()
+{
+    if (mInput.empty())
+        return;
 
-    size_t len = std::strlen(console->input);
+    // Reset cursor
+    mCursorPos = 0;
 
-    if (len == 0) return;
+    // --------------------------------
+    // Split command + args
+    // --------------------------------
+    size_t spacePos = mInput.find(' ');
 
-    console->cursor_position = 0;
-    std::string_view input(console->input, len);
+    std::string commandName;
+    std::string argString;
 
-    size_t spacePos = input.find(' ');
-
-    std::string_view commandName;
-    std::string_view argString;
-
-    if (spacePos != std::string_view::npos) {
-        commandName = input.substr(0, spacePos);
-        argString   = input.substr(spacePos + 1);
-    } else {
-        commandName = input;
-        argString   = {};
+    if (spacePos != std::string::npos)
+    {
+        commandName = mInput.substr(0, spacePos);
+        argString   = mInput.substr(spacePos + 1);
+    }
+    else
+    {
+        commandName = mInput;
+        argString.clear();
     }
 
-    Command* command = command_registry->find(std::string(commandName));
+    // --------------------------------
+    // Find command
+    // --------------------------------
+    Command* command = mRegistry.find(commandName);
 
-    if (!command) {
-        Log(FATAL, "Unknown command. Type 'help' to see command list");
+    if (!command)
+    {
+        log(FATAL,
+            "Unknown command. Type 'help' to see command list");
         return;
     }
 
-    // tokenize args
-    auto tokens = splitArgs(argString);
+    // --------------------------------
+    // Tokenize args
+    // --------------------------------
+    auto tokens = SplitArgs(argString);
 
     ParsedArgs parsed;
 
-    if (!parseArgs(*command, tokens, parsed)) {
-        Log(FATAL, "Invalid arguments. Type 'help %s' for usage", std::string(commandName).c_str());
+    if (!ParseArgs(*command, tokens, parsed))
+    {
+        log(FATAL,
+            "Invalid arguments. Type 'help %s' for usage",
+            commandName.c_str());
         return;
     }
 
+    // --------------------------------
+    // Execute
+    // --------------------------------
     command->execute(parsed);
 }
 
-void Console::ClearLogs() {
-    for (int i = 0; i < CONSOLE_MAX_LOG; i++) {
-        delete console->log[i];
-    }
-    console->log_count = 0;
-    console->scroll_offset = 0;
+
+void Console::clearLogs() {
+    mLogs.clear();
+    mScrollOffset = 0;
 }
 

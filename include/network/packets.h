@@ -25,13 +25,13 @@ enum class DisconnectReason : uint8_t {
 
 class Packet {
 public:
-    static Net::Result GetNextType(Socket socket, PacketType* out_pckType);
+    static Net::Result getNextType(Socket socket, PacketType* outPckType);
 
-    static Net::Result Send(Socket socket, const char* buffer, int buffer_size);
-    static Net::Result Receive(Socket socket, char* out_buffer, int buffer_capacity);
+    static Net::Result send(Socket socket, const char* buffer, int bufferSize);
+    static Net::Result receive(Socket socket, char* outBuffer, int bufferCapacity);
 
-    static void Serialize(PacketType type, const PacketData* data, int size, char* out_buffer) ;
-    static void Deserialize(const char* buffer, PacketData* out_packet, int size) ;
+    static void serialize(PacketType type, const PacketData* data, int size, char* outBuffer) ;
+    static void deserialize(const char* buffer, PacketData* outPacket, int size) ;
 };
 
 

@@ -7,18 +7,18 @@
 
 #include "network/packets.h"
 
-void Net::Init() {
+void Net::init() {
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         std::cout << "Failed to init net\n";
     }
 }
 
-void Net::Shutdown() {
+void Net::shutdown() {
     WSACleanup();
 }
 
-bool Net::ParsePort(std::string_view str, uint16_t& out) {
+bool Net::parsePort(std::string_view str, uint16_t& out) {
     unsigned int temp;
 
     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), temp);
@@ -41,7 +41,7 @@ bool Net::ParsePort(std::string_view str, uint16_t& out) {
  * @param port
  * @return the NetAddress
  */
-Net::Address Net::ResolveAddress(const char* hostname, uint16_t port) {
+Net::Address Net::resolveAddress(const char* hostname, uint16_t port) {
     Net::Address addr{};
     addr.port = port;
 
@@ -74,7 +74,7 @@ Net::Address Net::ResolveAddress(const char* hostname, uint16_t port) {
  * @param nonblocking
  * @return the NetSocket
  */
-Socket Socket::Create(Net::Protocol protocol, bool nonblocking){
+Socket Socket::create(Net::Protocol protocol, bool nonblocking){
     Socket sock;
     SOCKET handle = socket(AF_INET,
                            protocol == Net::Protocol::NET_TCP ? SOCK_STREAM : SOCK_DGRAM,
@@ -103,13 +103,13 @@ Socket Socket::Create(Net::Protocol protocol, bool nonblocking){
  * @param addr address to bind to
  * @return the NetResult
  */
-Net::Result Socket::Bind(Socket sock, Net::Address addr){
+Net::Result Socket::bind(Socket sock, Net::Address addr){
     SOCKADDR_IN sa;
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = addr.ip;
     sa.sin_port = addr.port;
 
-    if (bind(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
+    if (::bind(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
         return Net::Result::NET_ERROR;
     }
 
@@ -124,13 +124,13 @@ Net::Result Socket::Bind(Socket sock, Net::Address addr){
  * @param addr address to bind to
  * @return the NetResult
  */
-Net::Result Socket::Connect(Socket sock, Net::Address addr){
+Net::Result Socket::connect(Socket sock, Net::Address addr){
     SOCKADDR_IN sa;
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = addr.ip;
     sa.sin_port = addr.port;
 
-    if (connect(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
+    if (::connect(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err == WSAEWOULDBLOCK) return Net::Result::NET_WOULDBLOCK;
         return Net::Result::NET_ERROR;
@@ -139,7 +139,7 @@ Net::Result Socket::Connect(Socket sock, Net::Address addr){
     return Net::Result::NET_OK;
 }
 
-Net::Result Socket::Close(Socket sock) {
+Net::Result Socket::close(Socket sock) {
     return closesocket(sock.handle) == 0 ? Net::Result::NET_OK : Net::Result::NET_ERROR;
 }
 
@@ -151,8 +151,8 @@ Net::Result Socket::Close(Socket sock) {
  * @param backlog how many connections can be queued up
  * @return the NetResult
  */
-Net::Result Socket::Listen(Socket sock, int backlog){
-    return listen(sock.handle, backlog) == 0 ? Net::Result::NET_OK : Net::Result::NET_ERROR;
+Net::Result Socket::listen(Socket sock, int backlog){
+    return ::listen(sock.handle, backlog) == 0 ? Net::Result::NET_OK : Net::Result::NET_ERROR;
 }
 
 /**
@@ -160,23 +160,23 @@ Net::Result Socket::Listen(Socket sock, int backlog){
  * Accept a connection on a socket
  *
  * @param sock
- * @param out_socket client's socket
- * @param out_addr client's address
+ * @param outSocket client's socket
+ * @param outAddr client's address
  * @return the NetResult
  */
-Net::Result Socket::Accept(Socket sock, Socket* out_socket, Net::Address* out_addr){
+Net::Result Socket::accept(Socket sock, Socket* outSocket, Net::Address* outAddr){
     SOCKADDR_IN sa;
     int len = sizeof(sa);
-    SOCKET client = accept(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), &len);
+    SOCKET client = ::accept(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), &len);
 
     if(client == INVALID_SOCKET) {
         return Net::Result::NET_ERROR;
     }
 
-    if(out_socket != nullptr) out_socket->handle = client;
-    if(out_addr != nullptr) {
-        out_addr->ip = sa.sin_addr.s_addr;
-        out_addr->port = sa.sin_port;
+    if(outSocket != nullptr) outSocket->handle = client;
+    if(outAddr != nullptr) {
+        outAddr->ip = sa.sin_addr.s_addr;
+        outAddr->port = sa.sin_port;
     }
 
     return Net::Result::NET_OK;
@@ -191,7 +191,7 @@ Net::Result Socket::Accept(Socket sock, Socket* out_socket, Net::Address* out_ad
  * @param length
  * @return the NetResult
  */
-Net::Result Socket::Read(Socket sock, void* buffer, int length){
+Net::Result Socket::read(Socket sock, void* buffer, int length){
     int res = recv(sock.handle, static_cast<char*>(buffer), length, 0);
 
     if (res == 0) return Net::Result::NET_DISCONNECTED;
@@ -213,8 +213,8 @@ Net::Result Socket::Read(Socket sock, void* buffer, int length){
  * @param length length of data
  * @return the NetResult
  */
-Net::Result Socket::Send(Socket sock, const void* data, int length){
-    if(send(sock.handle, static_cast<const char*>(data), length, 0) == SOCKET_ERROR) {
+Net::Result Socket::send(Socket sock, const void* data, int length){
+    if(::send(sock.handle, static_cast<const char*>(data), length, 0) == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err == WSAEWOULDBLOCK) return Net::Result::NET_WOULDBLOCK;
         return Net::Result::NET_ERROR;
@@ -232,7 +232,7 @@ Net::Result Socket::Send(Socket sock, const void* data, int length){
  * @param writable
  * @return
  */
-Net::Result Socket::Poll(const Socket* sockets, int count, int timeout_ms, bool* readable, bool* writable) {
+Net::Result Socket::poll(const Socket* sockets, int count, int timeoutMs, bool* readable, bool* writable) {
     fd_set readfds;
     fd_set writefds;
 
@@ -248,10 +248,10 @@ Net::Result Socket::Poll(const Socket* sockets, int count, int timeout_ms, bool*
     }
 
     TIMEVAL tv;
-    tv.tv_sec = timeout_ms / 1000;
-    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    tv.tv_sec = timeoutMs / 1000;
+    tv.tv_usec = (timeoutMs % 1000) * 1000;
 
-    int res = select((int) maxfd + 1, &readfds, &writefds, NULL, &tv);
+    int res = select(static_cast<int>(maxfd) + 1, &readfds, &writefds, NULL, &tv);
     if (res == SOCKET_ERROR) return Net::Result::NET_ERROR;
 
     for (int i = 0; i < count; i++) {
