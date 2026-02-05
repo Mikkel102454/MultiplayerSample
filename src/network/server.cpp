@@ -247,7 +247,6 @@ void Server::sleep(const double tickStartTimeMs) {
         return;
     }
 
-    // Tick overran → calculate skipped ticks
     int skippedTicks = static_cast<int>(elapsed / tickMs) - 1;
     if (skippedTicks < 0) skippedTicks = 0;
     ConsoleManager::get().log(SUCCESS, "Server is running behind! Skipped %d ticks", skippedTicks);
@@ -288,6 +287,7 @@ void Server::run() {
  *
  */
 Server::~Server() {
+    mRunning = false;
     for (int i = 0; i < mClients.size(); i++) {
         if (!mClients[i].accepted) continue;
         removeClient(i, DisconnectReason::DIS_CLOSE);
@@ -295,7 +295,11 @@ Server::~Server() {
     Socket::close(mSocket);
 }
 
-
+/**
+ *
+ * Send stop
+ *
+ */
 void Server::stop() {
     mRunning = false;
 }

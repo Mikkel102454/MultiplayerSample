@@ -26,7 +26,7 @@ Net::Result Packet::getNextType(Socket socket, PacketType* outPckType) {
 }
 
 
-// -------- Send Packets ---------
+// Send Packets
 Net::Result Packet::send(Socket socket, const char* buffer, int bufferSize) {
     return Socket::send(socket, buffer, bufferSize);
 }
@@ -36,7 +36,7 @@ void Packet::serialize(PacketType type, const PacketData* data, int size, char* 
 
     std::memcpy(&outBuffer[1], data, size);
 }
-// -------- Recv Packets ---------
+// Recv Packets
 
 Net::Result Packet::receive(Socket socket, char* outBuffer, int bufferCapacity) {
     return Socket::read(socket, outBuffer, bufferCapacity);

@@ -27,6 +27,11 @@ void Client::connect() {
     }
 }
 
+/**
+ *
+ * Update the client
+ *
+ */
 void Client::update() {
     if (mState == NetState::IDLE) {
         return;

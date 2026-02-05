@@ -277,9 +277,7 @@ void Console::handleInput()
 
     bool userEditing = false;
 
-    // ==================================================
     // Character input
-    // ==================================================
     int key = GetCharPressed();
 
     while (key > 0)
@@ -303,9 +301,7 @@ void Console::handleInput()
         key = GetCharPressed();
     }
 
-    // ==================================================
     // Backspace
-    // ==================================================
     bool ctrlDown =
         IsKeyDown(KEY_LEFT_CONTROL) ||
         IsKeyDown(KEY_RIGHT_CONTROL);
@@ -368,9 +364,7 @@ void Console::handleInput()
         }
     }
 
-    // ==================================================
     // Enter
-    // ==================================================
     if (IsKeyPressed(KEY_ENTER))
     {
         if (!mInput.empty())
@@ -389,9 +383,7 @@ void Console::handleInput()
         }
     }
 
-    // ==================================================
     // History Up
-    // ==================================================
     if (IsKeyPressed(KEY_UP))
     {
         if (!mHistory.empty() &&
@@ -407,9 +399,7 @@ void Console::handleInput()
         }
     }
 
-    // ==================================================
     // History Down
-    // ==================================================
     if (IsKeyPressed(KEY_DOWN))
     {
         if (mHistoryOffset > 1)
@@ -430,9 +420,7 @@ void Console::handleInput()
         }
     }
 
-    // ==================================================
     // Left Arrow
-    // ==================================================
     if (IsKeyPressed(KEY_LEFT))
     {
         arrowStart = now;
@@ -453,9 +441,7 @@ void Console::handleInput()
         }
     }
 
-    // ==================================================
     // Right Arrow
-    // ==================================================
     if (IsKeyPressed(KEY_RIGHT))
     {
         arrowStart = now;
@@ -476,9 +462,7 @@ void Console::handleInput()
         }
     }
 
-    // ==================================================
     // Cursor blink
-    // ==================================================
     bool arrowActive =
         IsKeyDown(KEY_LEFT) ||
         IsKeyDown(KEY_RIGHT);
@@ -489,17 +473,13 @@ void Console::handleInput()
     mCursorBlink =
         !(arrowActive || backspaceActive || userEditing);
 
-    // ==================================================
     // Autocomplete
-    // ==================================================
     if (IsKeyPressed(KEY_TAB))
     {
         autoComplete();
     }
 
-    // ==================================================
     // Scroll
-    // ==================================================
     float wheel = GetMouseWheelMove();
 
     if (wheel > 0)
@@ -520,9 +500,6 @@ void Console::executeCommand()
     // Reset cursor
     mCursorPos = 0;
 
-    // --------------------------------
-    // Split command + args
-    // --------------------------------
     size_t spacePos = mInput.find(' ');
 
     std::string commandName;
@@ -539,9 +516,7 @@ void Console::executeCommand()
         argString.clear();
     }
 
-    // --------------------------------
     // Find command
-    // --------------------------------
     Command* command = mRegistry.find(commandName);
 
     if (!command)
@@ -551,9 +526,7 @@ void Console::executeCommand()
         return;
     }
 
-    // --------------------------------
     // Tokenize args
-    // --------------------------------
     auto tokens = SplitArgs(argString);
 
     ParsedArgs parsed;
@@ -566,9 +539,6 @@ void Console::executeCommand()
         return;
     }
 
-    // --------------------------------
-    // Execute
-    // --------------------------------
     command->execute(parsed);
 }
 
