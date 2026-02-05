@@ -2,8 +2,7 @@
 
 std::optional<Client> ClientManager::mClient = std::nullopt;
 
-Client& ClientManager::create(const Net::Address& addr)
-{
+Client& ClientManager::create(const Net::Address& addr){
     if (!mClient.has_value()) {
         mClient.emplace(addr);
     }
@@ -12,19 +11,16 @@ Client& ClientManager::create(const Net::Address& addr)
 }
 
 
-bool ClientManager::has()
-{
+bool ClientManager::has(){
     return mClient.has_value();
 }
 
 
-Client& ClientManager::get()
-{
+Client& ClientManager::get(){
     return *mClient;
 }
 
 
-void ClientManager::leave()
-{
+void ClientManager::leave(){
     mClient.reset();
 }
