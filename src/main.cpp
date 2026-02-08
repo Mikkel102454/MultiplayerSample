@@ -9,6 +9,7 @@
 #include "manager/ClientManager.h"
 #include "manager/ConsoleManager.h"
 #include "manager/ServerManager.h"
+#include "input/input.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -28,6 +29,28 @@ int main()
     Net::init();
 
     ConsoleManager::create();
+
+    //INIT INPUT
+    InputManager inputManager{};
+    InputContext context{};
+
+    Keybind keybind{};
+    keybind.mAction = "walk";
+    keybind.addBind(InputDevice::Type::KEYBOARD, KEY_W);
+    keybind.addBind(InputDevice::Type::CONTROLLER, GAMEPAD_BUTTON_LEFT_FACE_DOWN);
+
+    context.mBindings.push_back(keybind);
+    context.mName = "test";
+
+    inputManager.addAction("walk");
+
+    KeyboardDevice keyboardDevice{};
+    inputManager.addDevice(&keyboardDevice);
+    ControllerDevice controllerDevice{};
+    inputManager.addDevice(&controllerDevice);
+
+    inputManager.addContext(context);
+    inputManager.setContext("test");
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
@@ -57,6 +80,11 @@ int main()
 
         if (ConsoleManager::has() && ConsoleManager::get().isOpen()) {
             ConsoleManager::get().draw();
+        }
+
+        inputManager.process();
+        if(inputManager.isHeld("walk")){
+            ConsoleManager::get().log(INFO, "walk is held");
         }
         EndDrawing();
         //----------------------------------------------------------------------------------

@@ -1,9 +1,5 @@
-//
-// Created by mikkel on 2/4/2026.
-//
-
-#ifndef MULTIPLAYERSAMPLE_REGISTRY_H
-#define MULTIPLAYERSAMPLE_REGISTRY_H
+#ifndef REGISTRY_H
+#define REGISTRY_H
 #include <cstdint>
 #include <functional>
 #include <string>

@@ -1,5 +1,5 @@
-#ifndef MULTIPLAYERSAMPLE_DEV_H
-#define MULTIPLAYERSAMPLE_DEV_H
+#ifndef CONSOLE_H
+#define CONSOLE_H
 #include <deque>
 #include <span>
 #include <string_view>
@@ -99,4 +99,4 @@ protected:
     }
 };
 
-#endif //MULTIPLAYERSAMPLE_DEV_H
+#endif //CONSOLE_H

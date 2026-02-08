@@ -31,30 +31,36 @@ set(SOURCES
         src/network/server.cpp
         src/network/packets.cpp
         src/util/net.cpp
+        src/util/dev/console/console.cpp
+        src/util/draw.cpp
+        src/util/numbers.cpp
+        src/util/dev/console/command/registry.cpp
+        src/util/dev/console/command/commands/core_command.cpp
+        src/util/dev/console/command/auto_completion.cpp
+        src/manager/ConsoleManager.cpp
+        src/manager/ClientManager.cpp
+        src/manager/ServerManager.cpp
+        src/input/input.cpp
+        src/input/keybind.cpp
+        src/player.cpp
 )
 set(HEADERS
         include/network/client.h
         include/network/packets.h
         include/util/net.h
         include/network/server.h
-        src/util/draw.cpp
         include/util/draw.h
-        src/util/dev/console/console.cpp
         include/util/dev/console/console.h
-        src/util/numbers.cpp
         include/util/numbers.h
         include/util/dev/console/command/registry.h
-        src/util/dev/console/command/registry.cpp
-        src/util/dev/console/command/commands/core_command.cpp
         include/util/dev/console/command/commands/core_command.h
-        src/util/dev/console/command/auto_completion.cpp
         include/util/dev/console/command/auto_completion.h
-        src/manager/ServerManager.cpp
         include/manager/ServerManager.h
-        src/manager/ClientManager.cpp
         include/manager/ClientManager.h
-        src/manager/ConsoleManager.cpp
         include/manager/ConsoleManager.h
+        include/input/input.h
+        include/input/keybind.h
+        include/player.h
 )
 
 set(CMAKE_CXX_STANDARD 20)

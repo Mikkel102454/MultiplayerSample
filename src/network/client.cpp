@@ -15,7 +15,7 @@
 Client::Client(const Net::Address& serverAddr) {
     mState = NetState::IDLE;
     mServerAddr = serverAddr;
-    mServer = Socket::create(Net::Protocol::NET_TCP, true);
+    mServer = Socket::create(Net::Protocol::NET_TCP, false);
 }
 
 void Client::connect() {
@@ -46,6 +46,11 @@ void Client::update() {
 
     if (mReadable) {
         while (true) {
+            res = Socket::poll(&mServer, 1, 0, &mReadable, &mWritable);
+            if (!mReadable || res != Net::Result::NET_OK) {
+                return;
+            }
+
             PacketType packetType;
 
             res = Packet::getNextType(mServer, &packetType);

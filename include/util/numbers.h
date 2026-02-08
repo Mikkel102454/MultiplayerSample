@@ -1,7 +1,7 @@
-#ifndef MULTIPLAYERSAMPLE_NUMBERS_H
-#define MULTIPLAYERSAMPLE_NUMBERS_H
+#ifndef NUMBERS_H
+#define NUMBERS_H
 #include <string_view>
 
 bool IsNumbersOnly(std::string_view str);
 
-#endif //MULTIPLAYERSAMPLE_NUMBERS_H
+#endif //NUMBERS_H
