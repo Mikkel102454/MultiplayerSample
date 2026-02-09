@@ -50,7 +50,7 @@ int main()
         if(inputManager.isHeld("walk")){
             ConsoleManager::get().log(INFO, "walk is held");
         }
-        draw(&inputManager);
+        draw();
         //----------------------------------------------------------------------------------
     }
 
