@@ -20,10 +20,16 @@ FetchContent_Declare(
         GIT_TAG "lua-cmake-5.4"
 )
 
+FetchContent_Declare(
+        json
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+)
+
 set(raylib_USE_STATIC_LIBS OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(raylib)
 FetchContent_MakeAvailable(lua)
+FetchContent_MakeAvailable(json)
 
 set(SOURCES
         src/main.cpp
@@ -61,6 +67,7 @@ set(HEADERS
         include/input/input.h
         include/input/keybind.h
         include/player.h
+        include/main.h
 )
 
 set(CMAKE_CXX_STANDARD 20)
@@ -77,6 +84,7 @@ set_property(TARGET MultiplayerSample PROPERTY C_STANDARD 17)
 target_link_libraries(MultiplayerSample PRIVATE raylib)
 target_link_libraries(MultiplayerSample PRIVATE lua_library)
 target_link_libraries(MultiplayerSample PRIVATE ws2_32)
+target_link_libraries(MultiplayerSample PRIVATE nlohmann_json::nlohmann_json)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(MultiplayerSample PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")

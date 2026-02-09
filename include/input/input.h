@@ -30,7 +30,7 @@ class InputManager {
 
     std::map<std::string, InputContext> mContexts;
 
-    InputContext* mActiveContext;
+    InputContext* mActiveContext = nullptr;
 
     std::map<std::string, ActionState> mActions;
 
@@ -45,9 +45,12 @@ public:
     float getAxis(std::string_view action);
     void addContext(InputContext context);
     void addAction(std::string_view name);
-    void addDevice(InputDevice* device);
+    void addDevice(std::unique_ptr<InputDevice> devicePtr);
     void setContext(std::string_view name);
     void process();
+
+    void init(std::string_view path);
+    void load(std::string_view path);
 };
 
 #endif //INPUT_H

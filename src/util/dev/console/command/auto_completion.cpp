@@ -18,3 +18,17 @@ std::vector<std::string> CompleteCommandNames(std::string_view prefix) {
 
     return out;
 }
+
+std::vector<std::string> CompleteReloadNames(std::string_view prefix) {
+    std::vector<std::string> out;
+
+    std::vector<std::string> registry = {
+        ""
+    };
+
+    for (const auto& name : registry) {
+        if (name.starts_with(prefix)) out.push_back(name);
+    }
+
+    return out;
+}

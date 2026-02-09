@@ -9,6 +9,8 @@
 
 class InputDevice {
 public:
+    virtual ~InputDevice() = default;
+
     enum class Type : uint8_t {
         KEYBOARD,
         CONTROLLER,

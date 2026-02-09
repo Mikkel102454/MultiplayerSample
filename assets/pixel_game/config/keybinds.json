@@ -1,0 +1,22 @@
+{
+  "contexts": [
+    {
+      "name": "gameplay",
+      "bindings": [
+        {
+          "action": "dev_console",
+          "keyCodes": {
+            "keyboard": 96
+          }
+        },
+        {
+          "action": "walk",
+          "keyCodes": {
+            "keyboard": 87,
+            "controller": 3
+          }
+        }
+      ]
+    }
+  ]
+}

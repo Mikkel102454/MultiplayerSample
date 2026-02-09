@@ -217,4 +217,22 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             ConsoleManager::get().log(INFO, "Test command: %s", std::get<std::string>(args.values.at("string")).c_str());
         }
     });
+
+    registry.registerCommand({
+    "reload",
+    "Reload a specific feature",
+
+    {
+        {
+            "name",
+            ArgType::STRING,
+            false,
+            CompleteCommandNames
+        }
+    },
+
+    [](const ParsedArgs& args) {
+        std::string name = std::get<std::string>(args.values.at("name"));
+    }
+});
 }

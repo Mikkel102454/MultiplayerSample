@@ -1,4 +1,9 @@
+#include <nlohmann/json.hpp>
+
 #include "input/input.h"
+
+#include <fstream>
+
 #include "input/device.h"
 #include "manager/ConsoleManager.h"
 bool InputManager::isPressed(std::string_view action) {
@@ -120,6 +125,10 @@ void InputManager::setContext(std::string_view name) {
 }
 
 void InputManager::process() {
+    if (mActiveContext == nullptr) {
+        ConsoleManager::get().log(WARNING, "Tried to process keybindings with no active context");
+        return;
+    }
     for(auto bind : mActiveContext->mBindings){
         if(!mActions.contains(bind.mAction)){
             ConsoleManager::get().log(WARNING, "Tried to process a keybinding that doesnt have the corresponding action registered: %s", bind.mAction.c_str());
@@ -162,11 +171,64 @@ void InputManager::process() {
     }
 }
 
+void InputManager::init(std::string_view path) {
+    addDevice(std::make_unique<KeyboardDevice>());
+    addDevice(std::make_unique<ControllerDevice>());
+
+    load(path);
+}
+
+void InputManager::load(std::string_view path) {
+    std::ifstream file(path.data());
+
+    if (!file)
+    {
+        ConsoleManager::get().log(FATAL, "Failed to load keybinds.json");
+        return;
+    }
+
+    mContexts.clear();
+
+    nlohmann::json data;
+    file >> data;
+
+    for (const auto& context : data["contexts"])
+    {
+        InputContext inputContext{};
+        inputContext.mName = context["name"];
+
+
+        for (const auto& binding : context["bindings"])
+        {
+            Keybind keybind{};
+            keybind.mAction = binding["action"];
+
+            int keyboard = binding["keyCodes"].value("keyboard", -1);
+            int controller = binding["keyCodes"].value("controller", -1);
+
+            if (keyboard != -1)
+            {
+                keybind.addBind(InputDevice::Type::KEYBOARD, keyboard);
+            }
+
+            if (controller != -1)
+            {
+                keybind.addBind(InputDevice::Type::CONTROLLER, controller);
+            }
+
+
+            inputContext.mBindings.push_back(keybind);
+            addAction(keybind.mAction);
+        }
+        addContext(inputContext);
+    }
+}
+
 void InputManager::addAction(std::string_view name) {
     ActionState actionState{};
     mActions.emplace(name, actionState);
 }
 
-void InputManager::addDevice(InputDevice* device) {
-    mDevices.emplace_back(std::unique_ptr<InputDevice>(device));
+void InputManager::addDevice(std::unique_ptr<InputDevice> devicePtr) {
+    mDevices.emplace_back(std::move(devicePtr));
 }
