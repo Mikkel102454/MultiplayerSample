@@ -3,7 +3,7 @@
 #include "input/input.h"
 
 void setup(InputManager* inputManager);
-void draw(InputManager* inputManager);
+void draw();
 void shutdown();
 
 #endif //MAIN_H

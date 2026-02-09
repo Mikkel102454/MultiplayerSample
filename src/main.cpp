@@ -67,7 +67,7 @@ void setup(InputManager* inputManager) {
     inputManager->setContext("gameplay");
 }
 
-void draw(InputManager* inputManager) {
+void draw() {
     BeginDrawing();
 
     ClearBackground(GRAY);
