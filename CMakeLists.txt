@@ -52,13 +52,14 @@ set(SOURCES
         src/ui/screen.cpp
         src/ui/element.cpp
         src/ui/elements/button.cpp
+        src/util/resource_loader.cpp
+        src/ui/screen/credits.cpp
 )
 set(HEADERS
         include/network/client.h
         include/network/packets.h
         include/util/net.h
         include/network/server.h
-        include/util/draw.h
         include/util/dev/console/console.h
         include/util/numbers.h
         include/util/dev/console/command/registry.h
@@ -77,9 +78,7 @@ set(HEADERS
         include/ui/screen/main_menu.h
         include/screen_manager.h
         include/util/resource_loader.h
-        src/util/resource_loader.cpp
         include/ui/screen/credits.h
-        src/ui/screen/credits.cpp
 )
 
 set(CMAKE_CXX_STANDARD 20)
