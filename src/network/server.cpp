@@ -52,10 +52,10 @@ void Server::processPackage(Client* client) {
             case PacketType::PCK_NOTHING:
                 return;
             case PacketType::PCK_DISCONNECT: {
-                char buffer[sizeof(DisconnectedPacket)]{};
+                char buffer[sizeof(PlayerDisconnectPacket)]{};
                 res = Packet::receive(client->sock, buffer, sizeof(buffer));
 
-                DisconnectedPacket packet;
+                PlayerDisconnectPacket packet;
                 Packet::deserialize(buffer, &packet, sizeof(packet));
 
                 ConsoleManager::get().log(INFO, "Server: Client left the game: %d", packet.reason);
@@ -73,45 +73,44 @@ void Server::processPackage(Client* client) {
                     break;
                 }
 
+                if (packet.id != -1) {
+                    ConsoleManager::get().log(INFO, "Server: Somebody tried to join the server with a set id");
+                    return;
+                }
+
                 ConsoleManager::get().log(INFO, "Server: New client named: %s", packet.name);
+
+                //Broadcast to everyone new client joined
+                PlayerJoinPacket joinPacket{};
+                joinPacket.id = client->id;
+                joinPacket.announce = true;
+                std::memcpy(joinPacket.name, packet.name, 25);
+;
+                char sendBufferPlayerJoin[sizeof(PlayerJoinPacket)]{};
+
+                Packet::serialize(PacketType::PCK_JOIN, &joinPacket, sizeof(joinPacket), recvBuffer);
+                broadcast(sendBufferPlayerJoin, sizeof(sendBufferPlayerJoin));
 
                 std::memcpy(client->name, &packet.name[0], 25);
                 client->connected = true;
                 client->accepted = true;
 
-                char sendBuffer[sizeof(AcceptedPacket) + 1]{};
-                Packet::serialize(PacketType::PCK_ACCEPTED, nullptr, 0, sendBuffer);
-                Packet::send(client->sock, sendBuffer, sizeof(sendBuffer));
+                packet.id = client->id;
 
-                break;
-            }
-            case PacketType::PCK_PLAYERLIST_REQUEST: {
-                char recvBuffer[sizeof(PlayerListRequestPacket)]{};
-                res = Packet::receive(client->sock, recvBuffer, sizeof(recvBuffer));
-
-                PlayerListRequestPacket packet;
-                Packet::deserialize(recvBuffer, &packet, sizeof(packet));
-
-                if (res == Net::Result::NET_DISCONNECTED) {
-                    removeClient(client->id, DisconnectReason::DIS_LEFT);
-                    break;
-                }
-
-                PlayerListHeaderPacket headerPacket{};
-                headerPacket.playerCount = mClients.size();
-                char sendBuffer[sizeof(PlayerListHeaderPacket) + 1]{};
-
-                Packet::serialize(PacketType::PCK_PLAYERLIST_HEADER, &headerPacket, sizeof(headerPacket), sendBuffer);
+                char sendBuffer[sizeof(ConnectPacket) + 1]{};
+                Packet::serialize(PacketType::PCK_CONNECT, nullptr, 0, sendBuffer);
                 Packet::send(client->sock, sendBuffer, sizeof(sendBuffer));
 
                 for (int i = 0; i < mClients.size(); i++) {
+                    if (i == client->id) continue;
                     if(!mClients[i].accepted) continue;
-                    PlayerListPacket playerPacket{};
+                    PlayerJoinPacket playerPacket{};
                     playerPacket.id = i;
+                    playerPacket.announce = false;
                     std::memcpy(playerPacket.name, mClients[i].name, 25);
-                    char sendBufferPlayer[sizeof(PlayerListPacket) + 1]{};
+                    char sendBufferPlayer[sizeof(PlayerJoinPacket) + 1]{};
 
-                    Packet::serialize(PacketType::PCK_PLAYERLIST, &playerPacket, sizeof(playerPacket), sendBufferPlayer);
+                    Packet::serialize(PacketType::PCK_CONNECT, &playerPacket, sizeof(playerPacket), sendBufferPlayer);
                     Packet::send(client->sock, sendBufferPlayer, sizeof(sendBufferPlayer));
                 }
                 break;
@@ -179,9 +178,11 @@ void Server::acceptClients()
 void Server::removeClient(const int id, const DisconnectReason reason) {
     ConsoleManager::get().log(INFO, "Server: Removing client %d", id);
 
-    DisconnectedPacket disconnectedPacket{};
+    PlayerDisconnectPacket disconnectedPacket{};
     disconnectedPacket.reason = reason;
-    char sendBuffer[sizeof(PlayerListHeaderPacket) + 1]{};
+    disconnectedPacket.id = -1;
+    disconnectedPacket.announce = false;
+    char sendBuffer[sizeof(PlayerDisconnectPacket) + 1]{};
 
     Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
     Packet::send(mClients[id].sock, sendBuffer, sizeof(sendBuffer));
@@ -194,6 +195,12 @@ void Server::removeClient(const int id, const DisconnectReason reason) {
             break;
         }
     }
+
+    disconnectedPacket.id = id;
+    disconnectedPacket.announce = true;
+    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
+    broadcast(sendBuffer, sizeof(sendBuffer));
+
 }
 
 bool Server::isRunning() const {
@@ -302,4 +309,10 @@ Server::~Server() {
  */
 void Server::stop() {
     mRunning = false;
+}
+
+void Server::broadcast(const char* buffer, int bufferSize) {
+    for (auto & mClient : mClients) {
+        Packet::send(mClient.sock, buffer, bufferSize);
+    }
 }

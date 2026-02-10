@@ -10,6 +10,18 @@ void ResourceLoader::load() {
                                           96, nullptr, 0));
 }
 
+void ResourceLoader::unload() {
+    for (auto& [_, texture] : mTextures) {
+        UnloadTexture(texture);
+    }
+    mTextures.clear();
+
+    for (auto& [_, font] : mFonts) {
+        UnloadFont(font);
+    }
+    mFonts.clear();
+}
+
 Texture2D* ResourceLoader::getTexture2D(std::string_view texture) {
     if (!mTextures.contains(texture.data())) {
         ConsoleManager::get().log(FATAL, "Tried to get texture that was not loaded: %s", texture.data());

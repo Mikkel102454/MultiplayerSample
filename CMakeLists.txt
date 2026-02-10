@@ -79,6 +79,8 @@ set(HEADERS
         include/screen_manager.h
         include/util/resource_loader.h
         include/ui/screen/credits.h
+        include/sound_manager.h
+        src/sound_manager.cpp
 )
 
 set(CMAKE_CXX_STANDARD 20)

@@ -42,5 +42,11 @@ void ScreenManager::setScreen(std::string_view name) {
         ConsoleManager::get().log(FATAL, "Tried to set unknown screen: %s", std::string(name).c_str());
         return;
     }
+
+    if (mCurrentScreen != nullptr) {
+        mCurrentScreen->onExit();
+    }
+
     mCurrentScreen = it->second.get();
+    mCurrentScreen->onEnter();
 }

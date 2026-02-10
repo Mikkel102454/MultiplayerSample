@@ -19,10 +19,6 @@ public:
     void disconnect();
     void update();
 
-    // State
-    bool isConnected() const;
-    NetState state() const;
-
     // Getter / Setter
     Socket getServer() const {
         return mServer;

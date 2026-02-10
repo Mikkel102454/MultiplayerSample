@@ -8,12 +8,8 @@ struct PacketData;
 enum class PacketType : uint8_t {
     PCK_NOTHING = 0,
     PCK_CONNECT = 1,
-    PCK_ACCEPTED = 2,
+    PCK_JOIN = 2,
     PCK_DISCONNECT = 3,
-    PCK_MESSAGE = 4,
-    PCK_PLAYERLIST_REQUEST = 5,
-    PCK_PLAYERLIST_HEADER = 6,
-    PCK_PLAYERLIST = 7
 };
 
 enum class DisconnectReason : uint8_t {
@@ -40,23 +36,17 @@ struct PacketData {
 
 struct ConnectPacket : PacketData {
     char name[25]{};
+    int id{};
 };
-
-struct MessagePacket : PacketData {
-    char message[50]{};
-};
-struct AcceptedPacket : PacketData {
-};
-struct DisconnectedPacket : PacketData {
-    DisconnectReason reason{};
-};
-struct PlayerListRequestPacket : PacketData {
-};
-struct PlayerListHeaderPacket : PacketData {
-    uint8_t playerCount{};
-};
-struct PlayerListPacket : PacketData {
+struct PlayerJoinPacket : PacketData {
     char name[25]{};
+    bool announce{};
+    DisconnectReason reason{};
+    int id{};
+};
+struct PlayerDisconnectPacket : PacketData {
+    bool announce{};
+    DisconnectReason reason{};
     int id{};
 };
 

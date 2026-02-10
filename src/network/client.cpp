@@ -27,12 +27,31 @@ void Client::connect() {
     }
 }
 
+void Client::disconnect() {
+    ConsoleManager::get().log(WARNING, "Client: Lost connection to the server");
+
+    PlayerDisconnectPacket disconnectedPacket{};
+    disconnectedPacket.reason = DisconnectReason::DIS_LEFT;
+    disconnectedPacket.id = -1;
+    disconnectedPacket.announce = false;
+    char sendBuffer[sizeof(disconnectedPacket) + 1]{};
+
+    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
+    Packet::send(mServer, sendBuffer, sizeof(sendBuffer));
+
+    Socket::close(mServer);
+}
+
+void Client::update() {
+    processNetwork();
+}
+
 /**
  *
  * Update the client
  *
  */
-void Client::update() {
+void Client::processNetwork() {
     if (mState == NetState::IDLE) {
         return;
     }
@@ -66,11 +85,11 @@ void Client::update() {
             switch (packetType) {
                 case PacketType::PCK_NOTHING:
                     return;
-                case PacketType::PCK_ACCEPTED: {
-                    char recvBuffer[sizeof(AcceptedPacket)]{};
+                case PacketType::PCK_CONNECT: {
+                    char recvBuffer[sizeof(ConnectPacket)]{};
                     res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
-                    AcceptedPacket packet;
+                    ConnectPacket packet;
                     Packet::deserialize(recvBuffer, &packet, sizeof(packet));
                     if (res == Net::Result::NET_DISCONNECTED) {
                         ClientManager::leave();
@@ -82,40 +101,43 @@ void Client::update() {
                     break;
                 }
                 case PacketType::PCK_DISCONNECT: {
-                    char recvBuffer[sizeof(DisconnectedPacket)]{};
+                    char recvBuffer[sizeof(PlayerDisconnectPacket)]{};
                     res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
-                    DisconnectedPacket packet;
+                    PlayerDisconnectPacket packet;
                     Packet::deserialize(recvBuffer, &packet, sizeof(packet));
-                    ClientManager::leave();
-                    return;
-                }
-                case PacketType::PCK_PLAYERLIST_HEADER: {
-                    char recvBuffer[sizeof(PlayerListHeaderPacket)]{};
-                    res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
-                    PlayerListHeaderPacket packet;
-                    Packet::deserialize(recvBuffer, &packet, sizeof(packet));
-                    if (res == Net::Result::NET_DISCONNECTED) {
+                    if (packet.id == -1) {
+                        // get outa here
                         ClientManager::leave();
-                        break;
+                        return;
                     }
 
-                    ConsoleManager::get().log(SUCCESS, "Client: There is %d players in this game", packet.playerCount);
+                    // somebody else left
+                    ConsoleManager::get().log(SUCCESS, "Client: Player %d left the game", packet.id);
+
+                    if (packet.announce) {
+
+                    }
+
                     break;
                 }
-                case PacketType::PCK_PLAYERLIST: {
-                    char recvBuffer[sizeof(PlayerListPacket)]{};
+                case PacketType::PCK_JOIN: {
+                    char recvBuffer[sizeof(PlayerJoinPacket)]{};
                     res = Packet::receive(mServer, recvBuffer, sizeof(recvBuffer));
 
-                    PlayerListPacket packet;
+                    PlayerJoinPacket packet;
                     Packet::deserialize(recvBuffer, &packet, sizeof(packet));
                     if (res == Net::Result::NET_DISCONNECTED) {
                         ClientManager::leave();
                         break;
                     }
+                    ConsoleManager::get().log(SUCCESS, "Client: New client discovered with the name %s and id %d", packet.name, packet.id);
 
-                    ConsoleManager::get().log(SUCCESS, "Client: Client discovered with the name %s and id %d", packet.name, packet.id);
+                    if (packet.announce) {
+
+                    }
+
                     break;
                 }
                 default:
@@ -127,14 +149,5 @@ void Client::update() {
 }
 
 Client::~Client() {
-    ConsoleManager::get().log(WARNING, "Client: Lost connection to the server");
-
-    DisconnectedPacket disconnectedPacket{};
-    disconnectedPacket.reason = DisconnectReason::DIS_LEFT;
-    char sendBuffer[sizeof(PlayerListHeaderPacket) + 1]{};
-
-    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
-    Packet::send(mServer, sendBuffer, sizeof(sendBuffer));
-
-    Socket::close(mServer);
+    disconnect();
 }

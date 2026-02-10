@@ -82,6 +82,7 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             std::string name = std::get<std::string>(args.values.at("name"));
 
             ConnectPacket connectPacket{};
+            connectPacket.id = -1;
             memcpy(&connectPacket.name, name.c_str(), 25);
             char sendBuffer[sizeof(ConnectPacket) + 1]{};
 
@@ -103,25 +104,6 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             }
 
             ClientManager::leave();
-        }
-    });
-
-    registry.registerCommand({
-        "list",
-        "List player that are connected to the server",
-
-        {},
-
-        [](const ParsedArgs& args) {
-            if (!ClientManager::has()) {
-                ConsoleManager::get().log(WARNING, "You are not in a server. Please join a server before you can see active players");
-                return;
-            }
-
-            char sendBuffer[sizeof(PlayerListRequestPacket) + 1];
-
-            Packet::serialize(PacketType::PCK_PLAYERLIST_REQUEST, nullptr, 0, sendBuffer);
-            Packet::send(ClientManager::get().getServer(), sendBuffer, sizeof(sendBuffer));
         }
     });
 

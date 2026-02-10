@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <vector>
 
+enum class PacketType : uint8_t;
+struct PacketData;
 enum class DisconnectReason : uint8_t;
 
 class Server {
@@ -16,6 +18,8 @@ public:
 
     void run();
     void stop();
+
+    void broadcast(const char* buffer, int bufferSize);
 
     void removeClient(int id, DisconnectReason reason);
 

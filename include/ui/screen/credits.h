@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "raylib.h"
+#include "sound_manager.h"
 #include "ui/screen.h"
 #include "util/resource_loader.h"
 
@@ -18,7 +19,12 @@ class CreditsScreen : public Screen {
 public:
     using NavigateFn = std::function<void(std::string_view)>;
 
-    explicit CreditsScreen(NavigateFn navigate);
+    explicit CreditsScreen(NavigateFn navigate) : mNavigate(std::move(navigate)) {
+        mFont = ResourceLoader::getFont("main");
+
+        loadCreditsFile();
+        recomputeLayout();
+    };
     ~CreditsScreen() override = default;
 
 protected:

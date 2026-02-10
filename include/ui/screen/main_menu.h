@@ -8,13 +8,13 @@
 #include "ui/screen.h"
 #include "ui/elements/button.h"
 #include "util/resource_loader.h"
+#include "sound_manager.h"
 
 class MainMenuScreen : public Screen {
 public:
     using NavigateFn = std::function<void(std::string_view)>;
 
-    explicit MainMenuScreen(NavigateFn navigate)
-        : mNavigate(std::move(navigate)) {
+    explicit MainMenuScreen(NavigateFn navigate) : mNavigate(std::move(navigate)) {
 
         mElements.emplace_back(&mPlayBtn);
 
@@ -23,12 +23,20 @@ public:
         });
         mElements.emplace_back(&mCreditBtn);
 
-        mQuitBtn.setOnClick([]() {
-        });
+        mQuitBtn.setOnClick([]() {});
         mElements.emplace_back(&mQuitBtn);
     }
 
     ~MainMenuScreen() override = default;
+
+    void onEnter() override {
+        SoundManager::
+        SoundManager::MusicOptions musicOpt{};
+        musicOpt.volume = 0.6f;
+        musicOpt.loop = true;
+        musicOpt.bus = SoundManager::Bus::Auto; // "music/" => Music
+        SoundManager::playMusic("music/main_theme", musicOpt);
+    }
 
 private:
     NavigateFn mNavigate;

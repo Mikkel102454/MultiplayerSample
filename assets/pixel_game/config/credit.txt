@@ -2,15 +2,15 @@ Pixel Game
 
 Inspired by the game "Noita"
 
-Programming
+
+Programmer(s)
 Mikkel Iversen
 
-UI/UX Design
+UI/UX Designer(s)
 Mikkel Iversen
 
-SFX
+SFX Designer(s)
 Mikkel Iversen
-
 
 
 Thank you for playing!

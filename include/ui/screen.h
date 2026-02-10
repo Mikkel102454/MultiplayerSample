@@ -11,6 +11,8 @@ public:
     void draw();
     void update();
 
+    virtual void onEnter() {}
+    virtual void onExit() {}
 protected:
     std::vector<Element*> mElements;
 

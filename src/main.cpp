@@ -13,6 +13,7 @@
 #include "manager/server_manager.h"
 #include "input/input.h"
 #include "util/resource_loader.h"
+#include "sound_manager.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -27,14 +28,15 @@ int main()
     InitWindow(screenWidth, screenHeight, "raylib example - multiplayer");
     SetExitKey(KEY_NULL);
     SetTargetFPS(60);
+
+    InitAudioDevice();
     //--------------------------------------------------------------------------------------
 
     setup();
     ResourceLoader::load();
+    SoundManager::init();
 
     ScreenManager screenManager{};
-
-    //INIT INPUT
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
@@ -46,7 +48,6 @@ int main()
             //TODO call player update func
         }
 
-
         if (InputManager::get()->isPressed("dev_console")) {
             if (ConsoleManager::has()) {
                 ConsoleManager::get().setOpen(!ConsoleManager::get().isOpen());
@@ -57,6 +58,8 @@ int main()
         if(InputManager::get()->isPressed("ui_click")){
             ConsoleManager::get().log(INFO, "walk is held");
         }
+
+        SoundManager::update();
 
         screenManager.update();
         draw(&screenManager);
@@ -105,8 +108,12 @@ void shutdown() {
     Net::shutdown();
     ConsoleManager::destroy();
 
+    SoundManager::shutdown();
+    ResourceLoader::unload();
+
     // De-Initialization
     //--------------------------------------------------------------------------------------
+    CloseAudioDevice();
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 }

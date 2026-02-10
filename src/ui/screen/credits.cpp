@@ -4,13 +4,6 @@
 
 static constexpr float CREDITS_LETTER_SPACING = 1.0f;
 
-CreditsScreen::CreditsScreen(NavigateFn navigate)
-    : mNavigate(std::move(navigate)) {
-    mFont = ResourceLoader::getFont("main_font");
-    loadCreditsFile();
-    recomputeLayout();
-}
-
 void CreditsScreen::loadCreditsFile() {
     mLines.clear();
 

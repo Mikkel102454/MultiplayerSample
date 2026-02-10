@@ -8,6 +8,8 @@
 class ResourceLoader {
 public:
     static void load();
+    static void unload();
+
     static Texture2D* getTexture2D(std::string_view texture);
 
     static Font* getFont(std::string_view font);
