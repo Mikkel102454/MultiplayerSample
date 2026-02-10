@@ -27,6 +27,7 @@ public:
 
 
 class InputManager {
+    static InputManager mInstance;
 
     std::map<std::string, InputContext> mContexts;
 
@@ -36,6 +37,10 @@ class InputManager {
 
     std::vector<std::unique_ptr<InputDevice>> mDevices;
 public:
+    static InputManager* get() {
+        static InputManager instance;
+        return &instance;
+    }
 
     bool isPressed(std::string_view action);
     bool isPressedRepeat(std::string_view action);

@@ -5,7 +5,7 @@
 #include "util/dev/console/command/registry.h"
 
 #include "../../../../../include/util/dev/console/console.h"
-#include "manager/ConsoleManager.h"
+#include "manager/console_manager.h"
 
 const char* ArgTypeToString(ArgType t) {
 

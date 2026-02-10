@@ -1,8 +1,8 @@
 #include <thread>
 
-#include "manager/ClientManager.h"
-#include "manager/ConsoleManager.h"
-#include "manager/ServerManager.h"
+#include "manager/client_manager.h"
+#include "manager/console_manager.h"
+#include "manager/server_manager.h"
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"

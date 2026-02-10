@@ -4,7 +4,7 @@
 
 #include "util/dev/console/command/auto_completion.h"
 
-#include "manager/ConsoleManager.h"
+#include "manager/console_manager.h"
 #include "util/dev/console/console.h"
 
 std::vector<std::string> CompleteCommandNames(std::string_view prefix) {

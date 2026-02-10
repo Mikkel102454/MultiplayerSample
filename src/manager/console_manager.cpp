@@ -1,4 +1,4 @@
-#include "manager/ConsoleManager.h"
+#include "manager/console_manager.h"
 
 std::optional<Console> ConsoleManager::mConsole = std::nullopt;
 

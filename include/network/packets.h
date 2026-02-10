@@ -60,5 +60,11 @@ struct PlayerListPacket : PacketData {
     int id{};
 };
 
+struct PlayerUpdatePacket : PacketData {
+    int id{};
+    int posX{};
+    int posY{};
+};
+
 
 #endif //PACKETS_H

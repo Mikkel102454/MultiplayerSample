@@ -4,13 +4,15 @@
 #include <thread>
 
 #include "raylib.h"
+#include "screen_manager.h"
 #include "network/client.h"
 #include "network/packets.h"
 #include "util/dev/console/console.h"
-#include "manager/ClientManager.h"
-#include "manager/ConsoleManager.h"
-#include "manager/ServerManager.h"
+#include "manager/client_manager.h"
+#include "manager/console_manager.h"
+#include "manager/server_manager.h"
 #include "input/input.h"
+#include "util/resource_loader.h"
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -23,34 +25,41 @@ int main()
     const int screenHeight = 720;
 
     InitWindow(screenWidth, screenHeight, "raylib example - multiplayer");
-
+    SetExitKey(KEY_NULL);
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
+    setup();
+    ResourceLoader::load();
+
+    ScreenManager screenManager{};
+
     //INIT INPUT
-    InputManager inputManager{};
-    setup(&inputManager);
 
     // Main game loop
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
+        InputManager::get()->process();
 
         if (ClientManager::has()) {
             ClientManager::get().update();
+            //TODO call player update func
         }
-        inputManager.process();
 
-        if (inputManager.isPressed("dev_console")) {
+
+        if (InputManager::get()->isPressed("dev_console")) {
             if (ConsoleManager::has()) {
                 ConsoleManager::get().setOpen(!ConsoleManager::get().isOpen());
             }
         }
         if (ConsoleManager::has() && ConsoleManager::get().isOpen()) ConsoleManager::get().handleInput();
 
-        if(inputManager.isHeld("walk")){
+        if(InputManager::get()->isPressed("ui_click")){
             ConsoleManager::get().log(INFO, "walk is held");
         }
-        draw();
+
+        screenManager.update();
+        draw(&screenManager);
         //----------------------------------------------------------------------------------
     }
 
@@ -59,18 +68,19 @@ int main()
     return 0;
 }
 
-void setup(InputManager* inputManager) {
+void setup() {
     Net::init();
     ConsoleManager::create();
 
-    inputManager->init(ASSETS_PATH "pixel_game/config/keybinds.json");
-    inputManager->setContext("gameplay");
+    InputManager::get()->init(ASSETS_PATH "pixel_game/config/keybinds.json");
+    InputManager::get()->setContext("menu");
 }
 
-void draw() {
+void draw(ScreenManager* screenManager) {
     BeginDrawing();
 
-    ClearBackground(GRAY);
+    ClearBackground(WHITE);
+    screenManager->draw();
 
     if (ClientManager::has()) {
         if(ClientManager::get().getState() == NetState::IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);

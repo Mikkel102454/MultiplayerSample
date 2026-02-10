@@ -1,12 +1,18 @@
 {
   "contexts": [
     {
-      "name": "gameplay",
+      "name": "menu",
       "bindings": [
         {
           "action": "dev_console",
           "keyCodes": {
             "keyboard": 96
+          }
+        },
+        {
+          "action": "ui_click",
+          "keyCodes": {
+            "mouse": 0
           }
         },
         {

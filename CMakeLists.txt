@@ -38,17 +38,20 @@ set(SOURCES
         src/network/packets.cpp
         src/util/net.cpp
         src/util/dev/console/console.cpp
-        src/util/draw.cpp
         src/util/numbers.cpp
         src/util/dev/console/command/registry.cpp
         src/util/dev/console/command/commands/core_command.cpp
         src/util/dev/console/command/auto_completion.cpp
-        src/manager/ConsoleManager.cpp
-        src/manager/ClientManager.cpp
-        src/manager/ServerManager.cpp
+        src/manager/console_manager.cpp
+        src/manager/client_manager.cpp
+        src/manager/server_manager.cpp
         src/input/input.cpp
         src/input/keybind.cpp
         src/player.cpp
+        src/screen_manager.cpp
+        src/ui/screen.cpp
+        src/ui/element.cpp
+        src/ui/elements/button.cpp
 )
 set(HEADERS
         include/network/client.h
@@ -61,13 +64,22 @@ set(HEADERS
         include/util/dev/console/command/registry.h
         include/util/dev/console/command/commands/core_command.h
         include/util/dev/console/command/auto_completion.h
-        include/manager/ServerManager.h
-        include/manager/ClientManager.h
-        include/manager/ConsoleManager.h
+        include/manager/server_manager.h
+        include/manager/client_manager.h
+        include/manager/console_manager.h
         include/input/input.h
         include/input/keybind.h
         include/player.h
         include/main.h
+        include/ui/screen.h
+        include/ui/elements/button.h
+        include/ui/element.h
+        include/ui/screen/main_menu.h
+        include/screen_manager.h
+        include/util/resource_loader.h
+        src/util/resource_loader.cpp
+        include/ui/screen/credits.h
+        src/ui/screen/credits.cpp
 )
 
 set(CMAKE_CXX_STANDARD 20)

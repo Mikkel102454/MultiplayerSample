@@ -59,6 +59,36 @@ public:
     }
 };
 
+class MouseDevice : public InputDevice {
+public:
+    Type getType() override {
+        return InputDevice::Type::MOUSE;
+    }
+    bool getButtonPressed(int code) override {
+        return IsMouseButtonPressed(code);
+    }
+
+    bool getButtonReleased(int code) override {
+        return IsMouseButtonReleased(code);
+    }
+
+    bool getButtonDown(int code) override {
+        return IsMouseButtonDown(code);
+    }
+
+    bool getButtonPressedRepeat(int code) override {
+        return false;
+    }
+
+    bool getButtonUp(int code) override {
+        return IsMouseButtonUp(code);
+    }
+
+    float getAxis(int code) override {
+        return 0.0f;
+    }
+};
+
 class ControllerDevice : public InputDevice {
 public:
     int mGamepad = 0;

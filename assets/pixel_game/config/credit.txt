@@ -1,0 +1,16 @@
+Pixel Game
+
+Inspired by the game "Noita"
+
+Programming
+Mikkel Iversen
+
+UI/UX Design
+Mikkel Iversen
+
+SFX
+Mikkel Iversen
+
+
+
+Thank you for playing!

@@ -1,7 +1,7 @@
 #include "network/client.h"
 
-#include "manager/ClientManager.h"
-#include "manager/ConsoleManager.h"
+#include "manager/client_manager.h"
+#include "manager/console_manager.h"
 #include "network/packets.h"
 #include "util/dev/console/console.h"
 

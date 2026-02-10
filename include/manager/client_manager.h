@@ -1,7 +1,3 @@
-//
-// Created by mikkel on 2/5/2026.
-//
-
 #ifndef CLIENTMANAGER_H
 #define CLIENTMANAGER_H
 #include <optional>

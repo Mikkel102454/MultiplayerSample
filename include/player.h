@@ -5,11 +5,15 @@
 class Player {
 public:
     explicit Player();
-    ~Player();
+    ~Player() = default;
+
+    void draw();
+    void update();
 
 private:
-    InputManager input;
+    int mPosX, mPozY;
 
+    std::map<int, Player> mEnimies{};
 };
 
 

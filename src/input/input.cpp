@@ -5,7 +5,7 @@
 #include <fstream>
 
 #include "input/device.h"
-#include "manager/ConsoleManager.h"
+#include "manager/console_manager.h"
 bool InputManager::isPressed(std::string_view action) {
     const ActionState* act = nullptr;
 
@@ -174,6 +174,7 @@ void InputManager::process() {
 void InputManager::init(std::string_view path) {
     addDevice(std::make_unique<KeyboardDevice>());
     addDevice(std::make_unique<ControllerDevice>());
+    addDevice(std::make_unique<MouseDevice>());
 
     load(path);
 }
@@ -205,6 +206,7 @@ void InputManager::load(std::string_view path) {
 
             int keyboard = binding["keyCodes"].value("keyboard", -1);
             int controller = binding["keyCodes"].value("controller", -1);
+            int mouse = binding["keyCodes"].value("mouse", -1);
 
             if (keyboard != -1)
             {
@@ -214,6 +216,11 @@ void InputManager::load(std::string_view path) {
             if (controller != -1)
             {
                 keybind.addBind(InputDevice::Type::CONTROLLER, controller);
+            }
+
+            if (mouse != -1)
+            {
+                keybind.addBind(InputDevice::Type::MOUSE, mouse);
             }
 
 

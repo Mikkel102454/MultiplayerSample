@@ -2,7 +2,7 @@
 // Created by mikkel on 2/5/2026.
 //
 
-#include "manager/ServerManager.h"
+#include "manager/server_manager.h"
 
 std::optional<Server> ServerManager::mServer = std::nullopt;
 

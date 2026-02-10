@@ -4,7 +4,7 @@
 #include <iostream>
 #include <thread>
 
-#include "manager/ConsoleManager.h"
+#include "manager/console_manager.h"
 #include "network/packets.h"
 #include "util/dev/console/console.h"
 
