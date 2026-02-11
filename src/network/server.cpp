@@ -6,6 +6,7 @@
 
 #include "manager/console_manager.h"
 #include "network/packets.h"
+#include "network/packets/player_disconnect_packet.h"
 #include "util/dev/console/console.h"
 
 /**
@@ -37,9 +38,8 @@ Server::Server(const Net::Address &address, int maxClients) {
  */
 void Server::processPackage(Client* client) {
     while (true) {
-        PacketType packetType;
-
-        Net::Result res = Packet::getNextType(client->sock, &packetType);
+        std::unique_ptr<IPacket> pkt;
+        Net::Result res = PacketIO::receivePacket(client->sock, pkt);
 
         if (res == Net::Result::NET_DISCONNECTED) {
             removeClient(client->id, DisconnectReason::DIS_LEFT);
@@ -48,77 +48,11 @@ void Server::processPackage(Client* client) {
         if (res != Net::Result::NET_OK) {
             break;
         }
-        switch (packetType) {
-            case PacketType::PCK_NOTHING:
-                return;
-            case PacketType::PCK_DISCONNECT: {
-                char buffer[sizeof(PlayerDisconnectPacket)]{};
-                res = Packet::receive(client->sock, buffer, sizeof(buffer));
-
-                PlayerDisconnectPacket packet;
-                Packet::deserialize(buffer, &packet, sizeof(packet));
-
-                ConsoleManager::get().log(INFO, "Server: Client left the game: %d", packet.reason);
-                removeClient(client->id, DisconnectReason::DIS_LEFT);
-                break;
-            }
-            case PacketType::PCK_CONNECT: {
-                char recvBuffer[sizeof(ConnectPacket)]{};
-                res = Packet::receive(client->sock, recvBuffer, sizeof(recvBuffer));
-
-                ConnectPacket packet;
-                Packet::deserialize(recvBuffer, &packet, sizeof(packet));
-                if (res == Net::Result::NET_DISCONNECTED) {
-                    removeClient(client->id, DisconnectReason::DIS_LEFT);
-                    break;
-                }
-
-                if (packet.id != -1) {
-                    ConsoleManager::get().log(INFO, "Server: Somebody tried to join the server with a set id");
-                    return;
-                }
-
-                ConsoleManager::get().log(INFO, "Server: New client named: %s", packet.name);
-
-                //Broadcast to everyone new client joined
-                PlayerJoinPacket joinPacket{};
-                joinPacket.id = client->id;
-                joinPacket.announce = true;
-                std::memcpy(joinPacket.name, packet.name, 25);
-;
-                char sendBufferPlayerJoin[sizeof(PlayerJoinPacket)]{};
-
-                Packet::serialize(PacketType::PCK_JOIN, &joinPacket, sizeof(joinPacket), recvBuffer);
-                broadcast(sendBufferPlayerJoin, sizeof(sendBufferPlayerJoin));
-
-                std::memcpy(client->name, &packet.name[0], 25);
-                client->connected = true;
-                client->accepted = true;
-
-                packet.id = client->id;
-
-                char sendBuffer[sizeof(ConnectPacket) + 1]{};
-                Packet::serialize(PacketType::PCK_CONNECT, nullptr, 0, sendBuffer);
-                Packet::send(client->sock, sendBuffer, sizeof(sendBuffer));
-
-                for (int i = 0; i < mClients.size(); i++) {
-                    if (i == client->id) continue;
-                    if(!mClients[i].accepted) continue;
-                    PlayerJoinPacket playerPacket{};
-                    playerPacket.id = i;
-                    playerPacket.announce = false;
-                    std::memcpy(playerPacket.name, mClients[i].name, 25);
-                    char sendBufferPlayer[sizeof(PlayerJoinPacket) + 1]{};
-
-                    Packet::serialize(PacketType::PCK_CONNECT, &playerPacket, sizeof(playerPacket), sendBufferPlayer);
-                    Packet::send(client->sock, sendBufferPlayer, sizeof(sendBufferPlayer));
-                }
-                break;
-            }
-            default:
-                ConsoleManager::get().log(WARNING, "Server: Unknown package type: %d", packetType);
-                return;
+        if (!pkt) {
+            continue;
         }
+
+        pkt->handleServer(this, client);
     }
 }
 
@@ -174,33 +108,26 @@ void Server::acceptClients()
  *
  * @param id
  * @param reason
+ * @param announce
  */
-void Server::removeClient(const int id, const DisconnectReason reason) {
+void Server::removeClient(const int id, const DisconnectReason reason, bool announce) {
     ConsoleManager::get().log(INFO, "Server: Removing client %d", id);
 
     PlayerDisconnectPacket disconnectedPacket{};
     disconnectedPacket.reason = reason;
     disconnectedPacket.id = -1;
     disconnectedPacket.announce = false;
-    char sendBuffer[sizeof(PlayerDisconnectPacket) + 1]{};
 
-    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
-    Packet::send(mClients[id].sock, sendBuffer, sizeof(sendBuffer));
+    PacketIO::sendPacket(mClients[id].sock, disconnectedPacket);
 
+    mClients[id].accepted = false;
+    mClients[id].connected = false;
     Socket::close(mClients[id].sock);
 
-    for (auto i = mClients.begin(); i != mClients.end(); ++i) {
-        if (i->id == id) {
-            mClients.erase(i);
-            break;
-        }
-    }
-
     disconnectedPacket.id = id;
-    disconnectedPacket.announce = true;
-    Packet::serialize(PacketType::PCK_DISCONNECT, &disconnectedPacket, sizeof(disconnectedPacket), sendBuffer);
-    broadcast(sendBuffer, sizeof(sendBuffer));
+    disconnectedPacket.announce = announce;
 
+    broadcastPacket(disconnectedPacket, true);
 }
 
 bool Server::isRunning() const {
@@ -297,7 +224,7 @@ Server::~Server() {
     mRunning = false;
     for (int i = 0; i < mClients.size(); i++) {
         if (!mClients[i].accepted) continue;
-        removeClient(i, DisconnectReason::DIS_CLOSE);
+        removeClient(i, DisconnectReason::DIS_CLOSE, false);
     }
     Socket::close(mSocket);
 }
@@ -311,8 +238,9 @@ void Server::stop() {
     mRunning = false;
 }
 
-void Server::broadcast(const char* buffer, int bufferSize) {
-    for (auto & mClient : mClients) {
-        Packet::send(mClient.sock, buffer, bufferSize);
+void Server::broadcastPacket(const IPacket& packet, bool acceptedOnly) {
+    for (auto& c : mClients) {
+        if (acceptedOnly && !c.accepted) continue;
+        PacketIO::sendPacket(c.sock, packet);
     }
 }

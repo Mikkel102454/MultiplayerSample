@@ -86,9 +86,9 @@ void draw(ScreenManager* screenManager) {
     screenManager->draw();
 
     if (ClientManager::has()) {
-        if(ClientManager::get().getState() == NetState::IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
-        else if(ClientManager::get().getState() == NetState::CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
-        else if(ClientManager::get().getState() == NetState::READY) DrawText("Ready to play", 10, 50, 20, GREEN);
+        if(ClientManager::get().mState == NetState::IDLE) DrawText("Type ip of server to conenct", 10, 50, 20, GREEN);
+        else if(ClientManager::get().mState == NetState::CONNECTING) DrawText("Connecting to server...", 10, 50, 20, GREEN);
+        else if(ClientManager::get().mState == NetState::READY) DrawText("Ready to play", 10, 50, 20, GREEN);
     }
 
     if (ConsoleManager::has() && ConsoleManager::get().isOpen()) {

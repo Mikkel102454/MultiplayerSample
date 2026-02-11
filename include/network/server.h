@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <vector>
 
+class IPacket;
 enum class PacketType : uint8_t;
 struct PacketData;
 enum class DisconnectReason : uint8_t;
@@ -19,15 +20,14 @@ public:
     void run();
     void stop();
 
-    void broadcast(const char* buffer, int bufferSize);
+    void broadcastPacket(const IPacket& packet, bool acceptedOnly = true);
 
-    void removeClient(int id, DisconnectReason reason);
+    void removeClient(int id, DisconnectReason reason, bool announce = true);
 
 
     // Status
     bool isRunning() const;
 
-private:
     struct Client {
         int id = -1;
 
@@ -43,6 +43,8 @@ private:
         bool writable = false;
     };
 
+    std::vector<Client> mClients;
+private:
     void processPackage(Client* client);
     void acceptClients();
     void sleep(double tickStartTimeMs);
@@ -51,7 +53,6 @@ private:
     Socket mSocket{};
     int mMaxClients{};
 
-    std::vector<Client> mClients;
 
     uint64_t mTick{};
     std::atomic<bool> mRunning{false};

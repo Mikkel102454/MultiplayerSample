@@ -81,6 +81,10 @@ set(HEADERS
         include/ui/screen/credits.h
         include/sound_manager.h
         src/sound_manager.cpp
+        include/network/packets/connect_packet.h
+        include/network/packets/player_join_packet.h
+        include/network/packets/player_disconnect_packet.h
+        include/network/packets/player_update_packet.h
 )
 
 set(CMAKE_CXX_STANDARD 20)

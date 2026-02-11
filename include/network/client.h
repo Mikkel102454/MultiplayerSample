@@ -23,10 +23,10 @@ public:
     Socket getServer() const {
         return mServer;
     }
-    NetState getState() const {
-        return mState;
-    }
 
+    int mId{};
+
+    NetState mState = NetState::IDLE;
 private:
     void processNetwork();
 
@@ -36,7 +36,7 @@ private:
     bool mReadable = false;
     bool mWritable = false;
 
-    NetState mState = NetState::IDLE;
+
 };
 
 #endif //CLIENT_H

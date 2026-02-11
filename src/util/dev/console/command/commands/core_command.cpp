@@ -6,6 +6,7 @@
 #include "network/client.h"
 #include "network/packets.h"
 #include "network/server.h"
+#include "network/packets/connect_packet.h"
 #include "util/dev/console/console.h"
 #include "util/dev/console/command/auto_completion.h"
 #include "util/dev/console/command/registry.h"
@@ -84,10 +85,8 @@ void RegisterCoreCommands(CommandRegistry& registry) {
             ConnectPacket connectPacket{};
             connectPacket.id = -1;
             memcpy(&connectPacket.name, name.c_str(), 25);
-            char sendBuffer[sizeof(ConnectPacket) + 1]{};
 
-            Packet::serialize(PacketType::PCK_CONNECT, &connectPacket, sizeof(connectPacket), sendBuffer);
-            Packet::send(ClientManager::get().getServer(), sendBuffer, sizeof(sendBuffer));
+            PacketIO::sendPacket(ClientManager::get().getServer(), connectPacket);
         }
     });
 

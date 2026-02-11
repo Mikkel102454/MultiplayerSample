@@ -107,7 +107,7 @@ Net::Result Socket::bind(Socket sock, Net::Address addr){
     SOCKADDR_IN sa;
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = addr.ip;
-    sa.sin_port = addr.port;
+    sa.sin_port = htons(addr.port); // make sure its network byte order
 
     if (::bind(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
         return Net::Result::NET_ERROR;
@@ -128,7 +128,7 @@ Net::Result Socket::connect(Socket sock, Net::Address addr){
     SOCKADDR_IN sa;
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = addr.ip;
-    sa.sin_port = addr.port;
+    sa.sin_port = htons(addr.port); // make sure its network byte order
 
     if (::connect(sock.handle, reinterpret_cast<SOCKADDR*>(&sa), sizeof(sa)) == SOCKET_ERROR) {
         int err = WSAGetLastError();
@@ -176,7 +176,7 @@ Net::Result Socket::accept(Socket sock, Socket* outSocket, Net::Address* outAddr
     if(outSocket != nullptr) outSocket->handle = client;
     if(outAddr != nullptr) {
         outAddr->ip = sa.sin_addr.s_addr;
-        outAddr->port = sa.sin_port;
+        outAddr->port = ntohs(sa.sin_port); // make sure its network byte order
     }
 
     return Net::Result::NET_OK;
